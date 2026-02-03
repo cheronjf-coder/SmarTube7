@@ -188,14 +188,34 @@ export default function Player() {
       </View>
 
       <ScrollView style={styles.content}>
-        <YoutubePlayer
-          height={220}
-          videoId={videoId}
-          play={playing}
-          onChangeState={(state) => {
-            setPlaying(state === 'playing');
-          }}
-        />
+        {Platform.OS === 'web' ? (
+          <View style={styles.webPlayerContainer}>
+            <iframe
+              width="100%"
+              height="315"
+              src={`https://www.youtube.com/embed/${videoId}`}
+              frameBorder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              style={{ borderRadius: 8 }}
+            />
+          </View>
+        ) : YoutubePlayer ? (
+          <YoutubePlayer
+            height={220}
+            videoId={videoId}
+            play={playing}
+            onChangeState={(state) => {
+              setPlaying(state === 'playing');
+            }}
+          />
+        ) : (
+          <View style={styles.playerPlaceholder}>
+            <Text style={styles.playerPlaceholderText}>
+              Video player not available
+            </Text>
+          </View>
+        )}
 
         <View style={styles.info}>
           <Text style={styles.title}>{videoInfo.title}</Text>
