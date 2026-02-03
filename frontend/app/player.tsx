@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,19 +9,13 @@ import {
   SafeAreaView,
   ScrollView,
   Share,
-  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, router } from 'expo-router';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
-
-// Conditional import for YouTube player (doesn't work on web)
-let YoutubePlayer: any = null;
-if (Platform.OS !== 'web') {
-  YoutubePlayer = require('react-native-youtube-iframe').default;
-}
+import VideoPlayer from '../components/VideoPlayer';
 
 const BACKEND_URL = Constants.expoConfig?.extra?.EXPO_PUBLIC_BACKEND_URL || process.env.EXPO_PUBLIC_BACKEND_URL;
 
