@@ -404,4 +404,19 @@ const styles = StyleSheet.create({
     color: '#CCC',
     lineHeight: 20,
   },
+  playerLoading: {
+    height: 220,
+    backgroundColor: '#1A1A1A',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
+  },
+  loadingText: {
+    color: '#999',
+    fontSize: 14,
+  },
+  webPlayerContainer: {
+    padding: 16,
+    backgroundColor: '#000',
+  },
 });
