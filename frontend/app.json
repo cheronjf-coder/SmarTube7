@@ -27,6 +27,8 @@
         "android.permission.ACCESS_NETWORK_STATE"
       ],
       "edgeToEdgeEnabled": true,
+      "supportsInAppPurchase": false,
+      "supportsPictureInPicture": true,
       "intentFilters": [
         {
           "action": "VIEW",
