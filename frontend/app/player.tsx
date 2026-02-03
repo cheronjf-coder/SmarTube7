@@ -382,4 +382,18 @@ const styles = StyleSheet.create({
     color: '#CCC',
     lineHeight: 20,
   },
+  webPlayerContainer: {
+    padding: 16,
+    backgroundColor: '#000',
+  },
+  playerPlaceholder: {
+    height: 220,
+    backgroundColor: '#1A1A1A',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  playerPlaceholderText: {
+    color: '#999',
+    fontSize: 16,
+  },
 });
