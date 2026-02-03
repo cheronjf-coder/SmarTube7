@@ -3,7 +3,6 @@ import { View, StyleSheet, Platform, AppState, TouchableOpacity, Text, Modal, Sc
 import { Video, ResizeMode, VideoFullscreenUpdate, AVPlaybackStatus } from 'expo-av';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { Ionicons } from '@expo/vector-icons';
-import GoogleCast, { CastButton } from 'react-native-google-cast';
 
 interface Subtitle {
   language: string;
@@ -28,22 +27,8 @@ export default function VideoPlayerNative({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showSubtitleMenu, setShowSubtitleMenu] = useState(false);
   const [selectedSubtitle, setSelectedSubtitle] = useState<string | null>(null);
-  const [isPiPEnabled, setIsPiPEnabled] = useState(false);
-  const [castConnected, setCastConnected] = useState(false);
 
   useEffect(() => {
-    // Initialize Google Cast
-    if (Platform.OS === 'android' || Platform.OS === 'ios') {
-      GoogleCast.EventEmitter.addListener(GoogleCast.SESSION_STARTED, () => {
-        setCastConnected(true);
-        castVideo();
-      });
-
-      GoogleCast.EventEmitter.addListener(GoogleCast.SESSION_ENDED, () => {
-        setCastConnected(false);
-      });
-    }
-
     // Handle app state changes for PiP
     const subscription = AppState.addEventListener('change', async (nextAppState) => {
       if (Platform.OS === 'android' && nextAppState === 'background') {
@@ -52,8 +37,8 @@ export default function VideoPlayerNative({
           if (videoRef.current) {
             const status = await videoRef.current.getStatusAsync();
             if (status.isLoaded && status.isPlaying) {
-              // Continue playing in PiP mode
-              await videoRef.current.presentFullscreenPlayer();
+              // Keep playing in background
+              await videoRef.current.setStatusAsync({ shouldPlay: true });
             }
           }
         } catch (error) {
@@ -64,21 +49,8 @@ export default function VideoPlayerNative({
 
     return () => {
       subscription.remove();
-      GoogleCast.endSession();
     };
   }, []);
-
-  const castVideo = () => {
-    if (castConnected && streamUrl) {
-      GoogleCast.castMedia({
-        mediaUrl: streamUrl,
-        title: videoTitle,
-        imageUrl: '',
-        contentType: 'video/mp4',
-        streamDuration: 0,
-      });
-    }
-  };
 
   const handleFullscreenUpdate = async (event: any) => {
     switch (event.fullscreenUpdate) {
@@ -119,24 +91,12 @@ export default function VideoPlayerNative({
         onFullscreenUpdate={handleFullscreenUpdate}
         usePoster={false}
         posterSource={undefined}
-        // Enable PiP on Android
-        androidImplementation="android_media_player"
       />
 
-      {/* Control Bar */}
-      <View style={styles.controlBar}>
-        {/* Cast Button */}
-        {(Platform.OS === 'android' || Platform.OS === 'ios') && (
-          <View style={styles.castButtonContainer}>
-            <CastButton style={styles.castButton} tintColor="#FFFFFF" />
-            {castConnected && (
-              <Text style={styles.castText}>Casting...</Text>
-            )}
-          </View>
-        )}
-
-        {/* Subtitle Button */}
-        {subtitles.length > 0 && (
+      {/* Control Bar - Only show if subtitles available */}
+      {subtitles.length > 0 && (
+        <View style={styles.controlBar}>
+          {/* Subtitle Button */}
           <TouchableOpacity 
             style={styles.controlButton}
             onPress={() => setShowSubtitleMenu(true)}
@@ -144,8 +104,8 @@ export default function VideoPlayerNative({
             <Ionicons name="text-outline" size={24} color="#FFF" />
             <Text style={styles.controlButtonText}>CC</Text>
           </TouchableOpacity>
-        )}
-      </View>
+        </View>
+      )}
 
       {/* Subtitle Menu Modal */}
       <Modal
@@ -193,6 +153,10 @@ export default function VideoPlayerNative({
                 </TouchableOpacity>
               ))}
             </ScrollView>
+
+            <Text style={styles.subtitleNote}>
+              Note: Subtitle support coming soon. For now, use native player CC.
+            </Text>
           </View>
         </View>
       </Modal>
@@ -219,18 +183,6 @@ const styles = StyleSheet.create({
     gap: 8,
     alignItems: 'center',
   },
-  castButtonContainer: {
-    alignItems: 'center',
-  },
-  castButton: {
-    width: 30,
-    height: 30,
-  },
-  castText: {
-    color: '#FFF',
-    fontSize: 10,
-    marginTop: 2,
-  },
   controlButton: {
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
     padding: 8,
@@ -252,7 +204,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#1A1A1A',
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
-    maxHeight: '50%',
+    maxHeight: '60%',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -287,5 +239,12 @@ const styles = StyleSheet.create({
   subtitleOptionText: {
     fontSize: 16,
     color: '#FFF',
+  },
+  subtitleNote: {
+    padding: 16,
+    fontSize: 12,
+    color: '#999',
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
 });
