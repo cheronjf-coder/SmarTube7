@@ -1,0 +1,12 @@
+diff --git a/frontend/app/login.tsx b/frontend/app/login.tsx
+index 47b5635..18adbf9 100644
+--- a/frontend/app/login.tsx
++++ b/frontend/app/login.tsx
+@@ -65,6 +65,7 @@ export default function Login() {
+         </Text>
+       </View>
+     </SafeAreaView>
++    </View>
+   );
+ }
+ 
