@@ -14,8 +14,9 @@ export default function Login() {
   const { login } = useAuth();
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
+    <View style={styles.container}>
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.content}>
         <View style={styles.header}>
           <Ionicons name="play-circle" size={80} color="#FF0000" />
           <Text style={styles.title}>SmarTube</Text>
