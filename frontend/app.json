@@ -24,14 +24,11 @@
       "package": "com.smartube.app",
       "permissions": [
         "android.permission.INTERNET",
-        "android.permission.ACCESS_NETWORK_STATE",
-        "android.permission.ACCESS_WIFI_STATE",
-        "android.permission.CHANGE_WIFI_MULTICAST_STATE"
+        "android.permission.ACCESS_NETWORK_STATE"
       ],
       "edgeToEdgeEnabled": true,
       "supportsInAppPurchase": false,
       "supportsPictureInPicture": true,
-      "googleServicesFile": "./google-services.json",
       "intentFilters": [
         {
           "action": "VIEW",
