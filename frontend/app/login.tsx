@@ -127,6 +127,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#1A1A1A',
     padding: 20,
     borderRadius: 16,
+    marginBottom: 24,
   },
   pricingTitle: {
     fontSize: 24,
