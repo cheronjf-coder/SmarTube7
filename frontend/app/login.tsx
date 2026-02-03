@@ -74,9 +74,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#000',
   },
+  safeArea: {
+    flex: 1,
+  },
   content: {
     flex: 1,
     padding: 24,
+    paddingBottom: 32,
     justifyContent: 'space-between',
   },
   header: {
