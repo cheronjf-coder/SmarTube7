@@ -110,7 +110,8 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   features: {
-    gap: 16,
+    gap: 12,
+    marginBottom: 24,
   },
   feature: {
     flexDirection: 'row',
