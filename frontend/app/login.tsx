@@ -65,6 +65,7 @@ export default function Login() {
         </Text>
       </View>
     </SafeAreaView>
+    </View>
   );
 }
 
