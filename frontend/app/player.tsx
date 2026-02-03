@@ -211,7 +211,10 @@ export default function Player() {
           </View>
         ) : streamUrl ? (
           Platform.OS !== 'web' ? (
-            <VideoPlayerNative streamUrl={streamUrl} />
+            <VideoPlayerNative 
+              streamUrl={streamUrl}
+              videoTitle={videoInfo?.title}
+            />
           ) : (
             <View style={styles.webPlayerContainer}>
               <iframe
