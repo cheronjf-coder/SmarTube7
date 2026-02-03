@@ -9,13 +9,14 @@ import {
   SafeAreaView,
   ScrollView,
   Share,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, router } from 'expo-router';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
-import VideoPlayer from '../components/VideoPlayer';
+import VideoPlayerNative from '../components/VideoPlayerNative';
 
 const BACKEND_URL = Constants.expoConfig?.extra?.EXPO_PUBLIC_BACKEND_URL || process.env.EXPO_PUBLIC_BACKEND_URL;
 
@@ -35,16 +36,37 @@ export default function Player() {
   const category = (params.category as string) || 'documentary';
 
   const [videoInfo, setVideoInfo] = useState<VideoInfo | null>(null);
+  const [streamUrl, setStreamUrl] = useState<string>('');
   const [loading, setLoading] = useState(true);
+  const [loadingStream, setLoadingStream] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
-  const [playing, setPlaying] = useState(false);
 
   useEffect(() => {
     if (videoId) {
       loadVideoInfo();
       checkBookmark();
+      loadStreamUrl();
     }
   }, [videoId]);
+
+  const loadStreamUrl = async () => {
+    setLoadingStream(true);
+    try {
+      const sessionToken = await AsyncStorage.getItem('session_token');
+      const response = await axios.get(
+        `${BACKEND_URL}/api/videos/${videoId}/stream`,
+        {
+          headers: { Authorization: `Bearer ${sessionToken}` },
+        }
+      );
+      setStreamUrl(response.data.stream_url);
+    } catch (error: any) {
+      console.error('Error loading stream:', error);
+      Alert.alert('Error', 'Failed to load video stream. Using YouTube embed as fallback.');
+    } finally {
+      setLoadingStream(false);
+    }
+  };
 
   const loadVideoInfo = async () => {
     try {
