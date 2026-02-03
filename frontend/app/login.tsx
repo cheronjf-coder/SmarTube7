@@ -82,13 +82,14 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 24,
-    paddingBottom: 32,
-    justifyContent: 'space-between',
+    paddingBottom: 40,
     minHeight: '100%',
+    justifyContent: 'space-between',
   },
   header: {
     alignItems: 'center',
-    marginTop: 40,
+    marginTop: 20,
+    marginBottom: 32,
   },
   title: {
     fontSize: 48,
