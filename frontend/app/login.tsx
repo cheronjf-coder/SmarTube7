@@ -78,11 +78,14 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
-  content: {
+  scrollView: {
     flex: 1,
+  },
+  content: {
     padding: 24,
     paddingBottom: 32,
     justifyContent: 'space-between',
+    minHeight: '100%',
   },
   header: {
     alignItems: 'center',
