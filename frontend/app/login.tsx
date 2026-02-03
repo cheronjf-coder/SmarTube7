@@ -17,55 +17,55 @@ export default function Login() {
   return (
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <View style={styles.content}>
-        <View style={styles.header}>
-          <Ionicons name="play-circle" size={80} color="#FF0000" />
-          <Text style={styles.title}>SmarTube</Text>
-          <Text style={styles.subtitle}>Quality YouTube Videos</Text>
-          <Text style={styles.description}>
-            Watch documentaries, news, and educational content{' \n'}20+ minutes long, ad-free
+        <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
+          <View style={styles.header}>
+            <Ionicons name="play-circle" size={80} color="#FF0000" />
+            <Text style={styles.title}>SmarTube</Text>
+            <Text style={styles.subtitle}>Quality YouTube Videos</Text>
+            <Text style={styles.description}>
+              Watch documentaries, news, and educational content{' \n'}20+ minutes long, ad-free
+            </Text>
+          </View>
+
+          <View style={styles.features}>
+            <View style={styles.feature}>
+              <Ionicons name="time-outline" size={24} color="#FF0000" />
+              <Text style={styles.featureText}>20+ min videos only</Text>
+            </View>
+            <View style={styles.feature}>
+              <Ionicons name="close-circle-outline" size={24} color="#FF0000" />
+              <Text style={styles.featureText}>No ads</Text>
+            </View>
+            <View style={styles.feature}>
+              <Ionicons name="bookmark-outline" size={24} color="#FF0000" />
+              <Text style={styles.featureText}>Save bookmarks</Text>
+            </View>
+            <View style={styles.feature}>
+              <Ionicons name="share-social-outline" size={24} color="#FF0000" />
+              <Text style={styles.featureText}>Share videos</Text>
+            </View>
+          </View>
+
+          <View style={styles.pricing}>
+            <Text style={styles.pricingTitle}>🎉 14-Day Free Trial</Text>
+            <Text style={styles.pricingText}>Then choose your plan:</Text>
+            <View style={styles.plans}>
+              <Text style={styles.plan}>💰 $2/month</Text>
+              <Text style={styles.plan}>📅 $14/year</Text>
+              <Text style={styles.plan}>♾️ $29 lifetime</Text>
+            </View>
+          </View>
+
+          <TouchableOpacity style={styles.loginButton} onPress={login}>
+            <Ionicons name="logo-google" size={24} color="#FFF" />
+            <Text style={styles.loginButtonText}>Continue with Google</Text>
+          </TouchableOpacity>
+
+          <Text style={styles.terms}>
+            By continuing, you agree to our Terms of Service{' \n'}and Privacy Policy
           </Text>
-        </View>
-
-        <View style={styles.features}>
-          <View style={styles.feature}>
-            <Ionicons name="time-outline" size={24} color="#FF0000" />
-            <Text style={styles.featureText}>20+ min videos only</Text>
-          </View>
-          <View style={styles.feature}>
-            <Ionicons name="close-circle-outline" size={24} color="#FF0000" />
-            <Text style={styles.featureText}>No ads</Text>
-          </View>
-          <View style={styles.feature}>
-            <Ionicons name="bookmark-outline" size={24} color="#FF0000" />
-            <Text style={styles.featureText}>Save bookmarks</Text>
-          </View>
-          <View style={styles.feature}>
-            <Ionicons name="share-social-outline" size={24} color="#FF0000" />
-            <Text style={styles.featureText}>Share videos</Text>
-          </View>
-        </View>
-
-        <View style={styles.pricing}>
-          <Text style={styles.pricingTitle}>🎉 14-Day Free Trial</Text>
-          <Text style={styles.pricingText}>Then choose your plan:</Text>
-          <View style={styles.plans}>
-            <Text style={styles.plan}>💰 $2/month</Text>
-            <Text style={styles.plan}>📅 $14/year</Text>
-            <Text style={styles.plan}>♾️ $29 lifetime</Text>
-          </View>
-        </View>
-
-        <TouchableOpacity style={styles.loginButton} onPress={login}>
-          <Ionicons name="logo-google" size={24} color="#FFF" />
-          <Text style={styles.loginButtonText}>Continue with Google</Text>
-        </TouchableOpacity>
-
-        <Text style={styles.terms}>
-          By continuing, you agree to our Terms of Service{' \n'}and Privacy Policy
-        </Text>
-      </View>
-    </SafeAreaView>
+        </ScrollView>
+      </SafeAreaView>
     </View>
   );
 }
