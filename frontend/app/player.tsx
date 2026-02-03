@@ -204,13 +204,40 @@ export default function Player() {
       </View>
 
       <ScrollView style={styles.content}>
-        <VideoPlayer
-          videoId={videoId}
-          playing={playing}
-          onChangeState={(state) => {
-            setPlaying(state === 'playing');
-          }}
-        />
+        {loadingStream ? (
+          <View style={styles.playerLoading}>
+            <ActivityIndicator size="large" color="#FF0000" />
+            <Text style={styles.loadingText}>Loading ad-free stream...</Text>
+          </View>
+        ) : streamUrl ? (
+          Platform.OS !== 'web' ? (
+            <VideoPlayerNative streamUrl={streamUrl} />
+          ) : (
+            <View style={styles.webPlayerContainer}>
+              <iframe
+                width="100%"
+                height="315"
+                src={`https://www.youtube.com/embed/${videoId}`}
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                style={{ borderRadius: 8 }}
+              />
+            </View>
+          )
+        ) : (
+          <View style={styles.webPlayerContainer}>
+            <iframe
+              width="100%"
+              height="315"
+              src={`https://www.youtube.com/embed/${videoId}`}
+              frameBorder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              style={{ borderRadius: 8 }}
+            />
+          </View>
+        )}
 
         <View style={styles.info}>
           <Text style={styles.title}>{videoInfo.title}</Text>
