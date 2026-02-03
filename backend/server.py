@@ -469,7 +469,10 @@ async def get_subscription_status(user: User = Depends(require_auth)):
     # Calculate trial days remaining
     trial_days_remaining = 0
     if user.subscription_type == "trial" and user.trial_start_date:
-        trial_end = user.trial_start_date + timedelta(days=14)
+        trial_start = user.trial_start_date
+        if trial_start.tzinfo is None:
+            trial_start = trial_start.replace(tzinfo=timezone.utc)
+        trial_end = trial_start + timedelta(days=14)
         remaining = trial_end - datetime.now(timezone.utc)
         trial_days_remaining = max(0, remaining.days)
     
