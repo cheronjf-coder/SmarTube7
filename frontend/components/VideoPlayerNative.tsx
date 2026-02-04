@@ -50,6 +50,7 @@ export default function VideoPlayerNative({
   const [selectedSubtitle, setSelectedSubtitle] = useState<string | null>(null);
   const [isFloating, setIsFloating] = useState(false);
   const [downloadingSubtitles, setDownloadingSubtitles] = useState(false);
+
   useEffect(() => {
     // Enable background audio
     const setupAudio = async () => {
