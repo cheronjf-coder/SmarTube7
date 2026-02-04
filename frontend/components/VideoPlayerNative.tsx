@@ -63,55 +63,38 @@ export default function VideoPlayerNative({
 
   const showCCInfo = () => {
     Alert.alert(
-      'Closed Captions (CC) 📝',
-      'To enable subtitles:\n\n1. Tap the video to show controls\n2. Look for CC or ⚙️ button in player\n3. Select "Subtitles/CC"\n4. Choose your language\n\n✓ Most documentaries have CC\n✓ Auto-generated English available\n✓ Multiple languages often included',
-      [{ text: 'Got it!' }]
-    );
-  };
-
-  const openCCMenu = () => {
-    Alert.alert(
-      'Enable Subtitles 📺',
-      'Subtitle controls are in the video player:\n\n• Tap video → Player controls appear\n• Look for CC button (closed captions)\n• Or tap ⚙️ (settings) → Subtitles\n\nThe native player handles all subtitle formats automatically. YouTube videos usually have auto-generated English CC and often multiple language options!',
+      'How to Enable Subtitles',
+      'YouTube videos have built-in subtitles:\n\n1. Tap on the video\n2. Video controls will appear\n3. Look for subtitle/CC options in the player\n4. Most videos have auto-generated English subtitles\n\nNote: The subtitle button appears in the video player controls when available.',
       [{ text: 'OK' }]
     );
   };
 
   return (
-    <View style={styles.container}>
-      <Video
-        ref={videoRef}
-        source={{ uri: streamUrl }}
-        style={styles.video}
-        useNativeControls
-        resizeMode={ResizeMode.CONTAIN}
-        shouldPlay={true}
-        onFullscreenUpdate={handleFullscreenUpdate}
-        usePoster={false}
-        posterSource={undefined}
-      />
+    <View style={styles.wrapper}>
+      <View style={styles.videoContainer}>
+        <Video
+          ref={videoRef}
+          source={{ uri: streamUrl }}
+          style={styles.video}
+          useNativeControls
+          resizeMode={ResizeMode.CONTAIN}
+          shouldPlay={true}
+          onFullscreenUpdate={handleFullscreenUpdate}
+          usePoster={false}
+          posterSource={undefined}
+        />
+      </View>
 
-      {/* Control Bar - ALWAYS VISIBLE */}
+      {/* Control Bar - OUTSIDE video, smaller buttons */}
       <View style={styles.controlBar}>
-        {/* CC Info Button */}
         <TouchableOpacity 
           style={styles.controlButton}
           onPress={showCCInfo}
         >
-          <Ionicons name="information-circle-outline" size={28} color="#FFF" />
-          <Text style={styles.controlButtonText}>CC Help</Text>
+          <Ionicons name="help-circle-outline" size={18} color="#FF0000" />
+          <Text style={styles.controlButtonText}>CC Info</Text>
         </TouchableOpacity>
 
-        {/* CC Menu Button */}
-        <TouchableOpacity 
-          style={styles.controlButton}
-          onPress={openCCMenu}
-        >
-          <Ionicons name="text-outline" size={28} color="#FFF" />
-          <Text style={styles.controlButtonText}>CC</Text>
-        </TouchableOpacity>
-
-        {/* Fullscreen Button */}
         <TouchableOpacity 
           style={styles.controlButton}
           onPress={async () => {
@@ -120,8 +103,8 @@ export default function VideoPlayerNative({
             }
           }}
         >
-          <Ionicons name="expand" size={28} color="#FFF" />
-          <Text style={styles.controlButtonText}>Full</Text>
+          <Ionicons name="expand-outline" size={18} color="#FF0000" />
+          <Text style={styles.controlButtonText}>Fullscreen</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -129,47 +112,42 @@ export default function VideoPlayerNative({
 }
 
 const styles = StyleSheet.create({
-  container: {
+  wrapper: {
+    width: '100%',
+  },
+  videoContainer: {
     width: '100%',
     aspectRatio: 16 / 9,
     backgroundColor: '#000',
-    position: 'relative',
   },
   video: {
     width: '100%',
     height: '100%',
   },
   controlBar: {
-    position: 'absolute',
-    bottom: 12,
-    right: 12,
-    left: 12,
     flexDirection: 'row',
     justifyContent: 'space-around',
-    gap: 8,
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.85)',
-    padding: 12,
-    borderRadius: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: '#0A0A0A',
+    borderBottomWidth: 1,
+    borderBottomColor: '#222',
   },
   controlButton: {
-    backgroundColor: '#FF0000',
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 10,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    minWidth: 90,
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    backgroundColor: '#1A1A1A',
+    borderWidth: 1,
+    borderColor: '#333',
   },
   controlButtonText: {
     color: '#FFF',
-    fontSize: 11,
-    fontWeight: 'bold',
+    fontSize: 12,
+    fontWeight: '600',
   },
 });
