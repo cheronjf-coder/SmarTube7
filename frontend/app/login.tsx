@@ -94,6 +94,11 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginBottom: 32,
   },
+  logo: {
+    width: 280,
+    height: 140,
+    marginBottom: 16,
+  },
   title: {
     fontSize: 48,
     fontWeight: 'bold',
