@@ -61,14 +61,6 @@ export default function VideoPlayerNative({
     }
   };
 
-  const showCCInfo = () => {
-    Alert.alert(
-      'How to Enable Subtitles & Fullscreen',
-      'Tap on the video to show controls:\n\n📺 FULLSCREEN:\n• Look for fullscreen icon □ in player\n• Or rotate your phone sideways\n\n📝 SUBTITLES:\n• Look for CC button in player controls\n• Most videos have auto-generated CC\n• Multiple languages often available',
-      [{ text: 'Got it!' }]
-    );
-  };
-
   return (
     <View style={styles.wrapper}>
       <View style={styles.videoContainer}>
@@ -83,17 +75,6 @@ export default function VideoPlayerNative({
           usePoster={false}
           posterSource={undefined}
         />
-      </View>
-
-      {/* Control Bar - OUTSIDE video, smaller button */}
-      <View style={styles.controlBar}>
-        <TouchableOpacity 
-          style={styles.controlButton}
-          onPress={showCCInfo}
-        >
-          <Ionicons name="help-circle-outline" size={18} color="#FF0000" />
-          <Text style={styles.controlButtonText}>Help: CC & Fullscreen</Text>
-        </TouchableOpacity>
       </View>
     </View>
   );
@@ -111,31 +92,5 @@ const styles = StyleSheet.create({
   video: {
     width: '100%',
     height: '100%',
-  },
-  controlBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    backgroundColor: '#0A0A0A',
-    borderBottomWidth: 1,
-    borderBottomColor: '#222',
-  },
-  controlButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-    backgroundColor: '#1A1A1A',
-    borderWidth: 1,
-    borderColor: '#333',
-  },
-  controlButtonText: {
-    color: '#FFF',
-    fontSize: 12,
-    fontWeight: '600',
   },
 });
