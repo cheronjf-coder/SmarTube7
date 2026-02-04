@@ -221,31 +221,31 @@ export default function VideoPlayerNative({
         posterSource={undefined}
       />
 
-      {/* Control Bar */}
+      {/* Visible Control Bar - Always show with strong background */}
       <View style={styles.controlBar}>
         {/* Floating Window Button */}
         <TouchableOpacity 
           style={styles.controlButton}
           onPress={toggleFloating}
         >
-          <Ionicons name="contract-outline" size={24} color="#FFF" />
+          <Ionicons name="contract-outline" size={28} color="#FFF" />
           <Text style={styles.controlButtonText}>Float</Text>
         </TouchableOpacity>
 
         {/* Subtitle Download Button */}
         {subtitles.length > 0 && (
           <TouchableOpacity 
-            style={styles.controlButton}
+            style={[styles.controlButton, downloadingSubtitles && styles.controlButtonDisabled]}
             onPress={downloadAllSubtitles}
             disabled={downloadingSubtitles}
           >
             <Ionicons 
               name={downloadingSubtitles ? "hourglass-outline" : "download-outline"} 
-              size={24} 
+              size={28} 
               color="#FFF" 
             />
             <Text style={styles.controlButtonText}>
-              {downloadingSubtitles ? 'Downloading...' : 'DL Subs'}
+              {downloadingSubtitles ? 'Wait...' : 'DL Subs'}
             </Text>
           </TouchableOpacity>
         )}
@@ -256,10 +256,23 @@ export default function VideoPlayerNative({
             style={styles.controlButton}
             onPress={() => setShowSubtitleMenu(true)}
           >
-            <Ionicons name="text-outline" size={24} color="#FFF" />
+            <Ionicons name="text-outline" size={28} color="#FFF" />
             <Text style={styles.controlButtonText}>CC</Text>
           </TouchableOpacity>
         )}
+
+        {/* Fullscreen Button */}
+        <TouchableOpacity 
+          style={styles.controlButton}
+          onPress={async () => {
+            if (videoRef.current) {
+              await videoRef.current.presentFullscreenPlayer();
+            }
+          }}
+        >
+          <Ionicons name="expand" size={28} color="#FFF" />
+          <Text style={styles.controlButtonText}>Full</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Subtitle Menu Modal */}
