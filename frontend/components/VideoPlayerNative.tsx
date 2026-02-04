@@ -63,9 +63,9 @@ export default function VideoPlayerNative({
 
   const showCCInfo = () => {
     Alert.alert(
-      'How to Enable Subtitles',
-      'YouTube videos have built-in subtitles:\n\n1. Tap on the video\n2. Video controls will appear\n3. Look for subtitle/CC options in the player\n4. Most videos have auto-generated English subtitles\n\nNote: The subtitle button appears in the video player controls when available.',
-      [{ text: 'OK' }]
+      'How to Enable Subtitles & Fullscreen',
+      'Tap on the video to show controls:\n\n📺 FULLSCREEN:\n• Look for fullscreen icon □ in player\n• Or rotate your phone sideways\n\n📝 SUBTITLES:\n• Look for CC button in player controls\n• Most videos have auto-generated CC\n• Multiple languages often available',
+      [{ text: 'Got it!' }]
     );
   };
 
@@ -85,35 +85,14 @@ export default function VideoPlayerNative({
         />
       </View>
 
-      {/* Control Bar - OUTSIDE video, smaller buttons */}
+      {/* Control Bar - OUTSIDE video, smaller button */}
       <View style={styles.controlBar}>
         <TouchableOpacity 
           style={styles.controlButton}
           onPress={showCCInfo}
         >
           <Ionicons name="help-circle-outline" size={18} color="#FF0000" />
-          <Text style={styles.controlButtonText}>CC Info</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={styles.controlButton}
-          onPress={async () => {
-            try {
-              if (videoRef.current) {
-                await videoRef.current.presentFullscreenPlayer();
-              }
-            } catch (error) {
-              console.log('Fullscreen error:', error);
-              Alert.alert(
-                'Fullscreen',
-                'To enter fullscreen:\n\n1. Tap the video player\n2. Look for the fullscreen icon in the video controls\n3. Tap it to expand to fullscreen\n\nOr simply rotate your phone sideways - the video will auto-expand!',
-                [{ text: 'OK' }]
-              );
-            }
-          }}
-        >
-          <Ionicons name="expand-outline" size={18} color="#FF0000" />
-          <Text style={styles.controlButtonText}>Fullscreen</Text>
+          <Text style={styles.controlButtonText}>Help: CC & Fullscreen</Text>
         </TouchableOpacity>
       </View>
     </View>
