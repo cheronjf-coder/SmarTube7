@@ -1,245 +1,250 @@
 diff --git a/model.patch b/model.patch
-index d7729b4..e69de29 100644
+index e7f16f0..e69de29 100644
 --- a/model.patch
 +++ b/model.patch
-@@ -1,240 +0,0 @@
+@@ -1,245 +0,0 @@
 -diff --git a/model.patch b/model.patch
--index 3f1c220..e69de29 100644
+-index d7729b4..e69de29 100644
 ---- a/model.patch
 -+++ b/model.patch
--@@ -1,235 +0,0 @@
---diff --git a/frontend/components/VideoPlayerNative.tsx b/frontend/components/VideoPlayerNative.tsx
---index 213e69d..06c67a9 100644
------ a/frontend/components/VideoPlayerNative.tsx
---+++ b/frontend/components/VideoPlayerNative.tsx
---@@ -12,7 +12,7 @@ import {
---   Animated,
---   Alert
--- } from 'react-native';
----import { Video, ResizeMode, VideoFullscreenUpdate, AVPlaybackStatus } from 'expo-av';
---+import { Video, ResizeMode, VideoFullscreenUpdate, AVPlaybackStatus, Audio } from 'expo-av';
--- import * as ScreenOrientation from 'expo-screen-orientation';
--- import * as FileSystem from 'expo-file-system';
--- import * as Sharing from 'expo-sharing';
---@@ -51,6 +51,28 @@ export default function VideoPlayerNative({
---   const [isFloating, setIsFloating] = useState(false);
---   const [downloadingSubtitles, setDownloadingSubtitles] = useState(false);
--- 
---+  useEffect(() => {
---+    // Enable background audio
---+    const setupAudio = async () => {
---+      try {
---+        await Audio.setAudioModeAsync({
---+          allowsRecordingIOS: false,
---+          playsInSilentModeIOS: true,
---+          staysActiveInBackground: true,
---+          shouldDuckAndroid: true,
---+        });
---+      } catch (error) {
---+        console.log('Error setting up audio:', error);
---+      }
---+    };
---+
---+    setupAudio();
---+
---+    return () => {
---+      // Cleanup if needed
---+    };
---+  }, []);
---+
---   // Floating window position
---   const pan = useRef(new Animated.ValueXY({ x: SCREEN_WIDTH - 180, y: 100 })).current;
---   
+-@@ -1,240 +0,0 @@
 --diff --git a/model.patch b/model.patch
---index 5c2339a..e69de29 100644
+--index 3f1c220..e69de29 100644
 ----- a/model.patch
 --+++ b/model.patch
---@@ -1,188 +0,0 @@
----diff --git a/frontend/app/login.tsx b/frontend/app/login.tsx
----index 18d9f24..a68c4e9 100644
------- a/frontend/app/login.tsx
----+++ b/frontend/app/login.tsx
----@@ -82,13 +82,14 @@ const styles = StyleSheet.create({
----   },
----   content: {
----     padding: 24,
-----    paddingBottom: 32,
-----    justifyContent: 'space-between',
----+    paddingBottom: 40,
----     minHeight: '100%',
----+    justifyContent: 'space-between',
----   },
----   header: {
----     alignItems: 'center',
-----    marginTop: 40,
----+    marginTop: 20,
----+    marginBottom: 32,
----   },
----   title: {
----     fontSize: 48,
+--@@ -1,235 +0,0 @@
+---diff --git a/frontend/components/VideoPlayerNative.tsx b/frontend/components/VideoPlayerNative.tsx
+---index 213e69d..06c67a9 100644
+------ a/frontend/components/VideoPlayerNative.tsx
+---+++ b/frontend/components/VideoPlayerNative.tsx
+---@@ -12,7 +12,7 @@ import {
+---   Animated,
+---   Alert
+--- } from 'react-native';
+----import { Video, ResizeMode, VideoFullscreenUpdate, AVPlaybackStatus } from 'expo-av';
+---+import { Video, ResizeMode, VideoFullscreenUpdate, AVPlaybackStatus, Audio } from 'expo-av';
+--- import * as ScreenOrientation from 'expo-screen-orientation';
+--- import * as FileSystem from 'expo-file-system';
+--- import * as Sharing from 'expo-sharing';
+---@@ -51,6 +51,28 @@ export default function VideoPlayerNative({
+---   const [isFloating, setIsFloating] = useState(false);
+---   const [downloadingSubtitles, setDownloadingSubtitles] = useState(false);
+--- 
+---+  useEffect(() => {
+---+    // Enable background audio
+---+    const setupAudio = async () => {
+---+      try {
+---+        await Audio.setAudioModeAsync({
+---+          allowsRecordingIOS: false,
+---+          playsInSilentModeIOS: true,
+---+          staysActiveInBackground: true,
+---+          shouldDuckAndroid: true,
+---+        });
+---+      } catch (error) {
+---+        console.log('Error setting up audio:', error);
+---+      }
+---+    };
+---+
+---+    setupAudio();
+---+
+---+    return () => {
+---+      // Cleanup if needed
+---+    };
+---+  }, []);
+---+
+---   // Floating window position
+---   const pan = useRef(new Animated.ValueXY({ x: SCREEN_WIDTH - 180, y: 100 })).current;
+---   
 ---diff --git a/model.patch b/model.patch
----index d2b7110..e69de29 100644
+---index 5c2339a..e69de29 100644
 ------ a/model.patch
 ---+++ b/model.patch
----@@ -1,161 +0,0 @@
+---@@ -1,188 +0,0 @@
 ----diff --git a/frontend/app/login.tsx b/frontend/app/login.tsx
-----index 742f570..18d9f24 100644
+----index 18d9f24..a68c4e9 100644
 ------- a/frontend/app/login.tsx
 ----+++ b/frontend/app/login.tsx
-----@@ -4,7 +4,6 @@ import {
-----   Text,
-----   StyleSheet,
-----   TouchableOpacity,
------  Image,
-----   SafeAreaView,
-----   ScrollView,
----- } from 'react-native';
+----@@ -82,13 +82,14 @@ const styles = StyleSheet.create({
+----   },
+----   content: {
+----     padding: 24,
+-----    paddingBottom: 32,
+-----    justifyContent: 'space-between',
+----+    paddingBottom: 40,
+----     minHeight: '100%',
+----+    justifyContent: 'space-between',
+----   },
+----   header: {
+----     alignItems: 'center',
+-----    marginTop: 40,
+----+    marginTop: 20,
+----+    marginBottom: 32,
+----   },
+----   title: {
+----     fontSize: 48,
 ----diff --git a/model.patch b/model.patch
-----index 56820d7..e69de29 100644
+----index d2b7110..e69de29 100644
 ------- a/model.patch
 ----+++ b/model.patch
-----@@ -1,144 +0,0 @@
+----@@ -1,161 +0,0 @@
 -----diff --git a/frontend/app/login.tsx b/frontend/app/login.tsx
------index 605ff39..742f570 100644
+-----index 742f570..18d9f24 100644
 -------- a/frontend/app/login.tsx
 -----+++ b/frontend/app/login.tsx
------@@ -6,6 +6,7 @@ import {
+-----@@ -4,7 +4,6 @@ import {
+-----   Text,
+-----   StyleSheet,
 -----   TouchableOpacity,
------   Image,
+------  Image,
 -----   SafeAreaView,
------+  ScrollView,
+-----   ScrollView,
 ----- } from 'react-native';
------ import { useAuth } from '../contexts/AuthContext';
------ import { Ionicons } from '@expo/vector-icons';
------@@ -16,55 +17,55 @@ export default function Login() {
------   return (
------     <View style={styles.container}>
------       <SafeAreaView style={styles.safeArea}>
-------        <View style={styles.content}>
-------        <View style={styles.header}>
-------          <Ionicons name="play-circle" size={80} color="#FF0000" />
-------          <Text style={styles.title}>SmarTube</Text>
-------          <Text style={styles.subtitle}>Quality YouTube Videos</Text>
-------          <Text style={styles.description}>
-------            Watch documentaries, news, and educational content{' \n'}20+ minutes long, ad-free
-------          </Text>
-------        </View>
-------
-------        <View style={styles.features}>
-------          <View style={styles.feature}>
-------            <Ionicons name="time-outline" size={24} color="#FF0000" />
-------            <Text style={styles.featureText}>20+ min videos only</Text>
-------          </View>
-------          <View style={styles.feature}>
-------            <Ionicons name="close-circle-outline" size={24} color="#FF0000" />
-------            <Text style={styles.featureText}>No ads</Text>
------+        <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
------+          <View style={styles.header}>
------+            <Ionicons name="play-circle" size={80} color="#FF0000" />
------+            <Text style={styles.title}>SmarTube</Text>
------+            <Text style={styles.subtitle}>Quality YouTube Videos</Text>
------+            <Text style={styles.description}>
------+              Watch documentaries, news, and educational content{' \n'}20+ minutes long, ad-free
------+            </Text>
------           </View>
-------          <View style={styles.feature}>
-------            <Ionicons name="bookmark-outline" size={24} color="#FF0000" />
-------            <Text style={styles.featureText}>Save bookmarks</Text>
-------          </View>
-------          <View style={styles.feature}>
-------            <Ionicons name="share-social-outline" size={24} color="#FF0000" />
-------            <Text style={styles.featureText}>Share videos</Text>
------+
------+          <View style={styles.features}>
------+            <View style={styles.feature}>
------+              <Ionicons name="time-outline" size={24} color="#FF0000" />
------+              <Text style={styles.featureText}>20+ min videos only</Text>
------+            </View>
------+            <View style={styles.feature}>
------+              <Ionicons name="close-circle-outline" size={24} color="#FF0000" />
------+              <Text style={styles.featureText}>No ads</Text>
------+            </View>
------+            <View style={styles.feature}>
------+              <Ionicons name="bookmark-outline" size={24} color="#FF0000" />
------+              <Text style={styles.featureText}>Save bookmarks</Text>
------+            </View>
------+            <View style={styles.feature}>
------+              <Ionicons name="share-social-outline" size={24} color="#FF0000" />
------+              <Text style={styles.featureText}>Share videos</Text>
------+            </View>
------           </View>
-------        </View>
------ 
-------        <View style={styles.pricing}>
-------          <Text style={styles.pricingTitle}>🎉 14-Day Free Trial</Text>
-------          <Text style={styles.pricingText}>Then choose your plan:</Text>
-------          <View style={styles.plans}>
-------            <Text style={styles.plan}>💰 $2/month</Text>
-------            <Text style={styles.plan}>📅 $14/year</Text>
-------            <Text style={styles.plan}>♾️ $29 lifetime</Text>
------+          <View style={styles.pricing}>
------+            <Text style={styles.pricingTitle}>🎉 14-Day Free Trial</Text>
------+            <Text style={styles.pricingText}>Then choose your plan:</Text>
------+            <View style={styles.plans}>
------+              <Text style={styles.plan}>💰 $2/month</Text>
------+              <Text style={styles.plan}>📅 $14/year</Text>
------+              <Text style={styles.plan}>♾️ $29 lifetime</Text>
------+            </View>
------           </View>
-------        </View>
------ 
-------        <TouchableOpacity style={styles.loginButton} onPress={login}>
-------          <Ionicons name="logo-google" size={24} color="#FFF" />
-------          <Text style={styles.loginButtonText}>Continue with Google</Text>
-------        </TouchableOpacity>
------+          <TouchableOpacity style={styles.loginButton} onPress={login}>
------+            <Ionicons name="logo-google" size={24} color="#FFF" />
------+            <Text style={styles.loginButtonText}>Continue with Google</Text>
------+          </TouchableOpacity>
------ 
-------        <Text style={styles.terms}>
-------          By continuing, you agree to our Terms of Service{' \n'}and Privacy Policy
-------        </Text>
-------      </View>
-------    </SafeAreaView>
------+          <Text style={styles.terms}>
------+            By continuing, you agree to our Terms of Service{' \n'}and Privacy Policy
------+          </Text>
------+        </ScrollView>
------+      </SafeAreaView>
------     </View>
------   );
------ }
------@@ -77,11 +78,14 @@ const styles = StyleSheet.create({
------   safeArea: {
------     flex: 1,
------   },
-------  content: {
------+  scrollView: {
------     flex: 1,
------+  },
------+  content: {
------     padding: 24,
------     paddingBottom: 32,
------     justifyContent: 'space-between',
------+    minHeight: '100%',
------   },
------   header: {
------     alignItems: 'center',
 -----diff --git a/model.patch b/model.patch
------index 70ebba3..46dac4b 100644
+-----index 56820d7..e69de29 100644
 -------- a/model.patch
 -----+++ b/model.patch
------@@ -1,12 +0,0 @@
+-----@@ -1,144 +0,0 @@
 ------diff --git a/frontend/app/login.tsx b/frontend/app/login.tsx
-------index 47b5635..18adbf9 100644
+------index 605ff39..742f570 100644
 --------- a/frontend/app/login.tsx
 ------+++ b/frontend/app/login.tsx
-------@@ -65,6 +65,7 @@ export default function Login() {
-------         </Text>
-------       </View>
-------     </SafeAreaView>
-------+    </View>
+------@@ -6,6 +6,7 @@ import {
+------   TouchableOpacity,
+------   Image,
+------   SafeAreaView,
+------+  ScrollView,
+------ } from 'react-native';
+------ import { useAuth } from '../contexts/AuthContext';
+------ import { Ionicons } from '@expo/vector-icons';
+------@@ -16,55 +17,55 @@ export default function Login() {
+------   return (
+------     <View style={styles.container}>
+------       <SafeAreaView style={styles.safeArea}>
+-------        <View style={styles.content}>
+-------        <View style={styles.header}>
+-------          <Ionicons name="play-circle" size={80} color="#FF0000" />
+-------          <Text style={styles.title}>SmarTube</Text>
+-------          <Text style={styles.subtitle}>Quality YouTube Videos</Text>
+-------          <Text style={styles.description}>
+-------            Watch documentaries, news, and educational content{' \n'}20+ minutes long, ad-free
+-------          </Text>
+-------        </View>
+-------
+-------        <View style={styles.features}>
+-------          <View style={styles.feature}>
+-------            <Ionicons name="time-outline" size={24} color="#FF0000" />
+-------            <Text style={styles.featureText}>20+ min videos only</Text>
+-------          </View>
+-------          <View style={styles.feature}>
+-------            <Ionicons name="close-circle-outline" size={24} color="#FF0000" />
+-------            <Text style={styles.featureText}>No ads</Text>
+------+        <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
+------+          <View style={styles.header}>
+------+            <Ionicons name="play-circle" size={80} color="#FF0000" />
+------+            <Text style={styles.title}>SmarTube</Text>
+------+            <Text style={styles.subtitle}>Quality YouTube Videos</Text>
+------+            <Text style={styles.description}>
+------+              Watch documentaries, news, and educational content{' \n'}20+ minutes long, ad-free
+------+            </Text>
+------           </View>
+-------          <View style={styles.feature}>
+-------            <Ionicons name="bookmark-outline" size={24} color="#FF0000" />
+-------            <Text style={styles.featureText}>Save bookmarks</Text>
+-------          </View>
+-------          <View style={styles.feature}>
+-------            <Ionicons name="share-social-outline" size={24} color="#FF0000" />
+-------            <Text style={styles.featureText}>Share videos</Text>
+------+
+------+          <View style={styles.features}>
+------+            <View style={styles.feature}>
+------+              <Ionicons name="time-outline" size={24} color="#FF0000" />
+------+              <Text style={styles.featureText}>20+ min videos only</Text>
+------+            </View>
+------+            <View style={styles.feature}>
+------+              <Ionicons name="close-circle-outline" size={24} color="#FF0000" />
+------+              <Text style={styles.featureText}>No ads</Text>
+------+            </View>
+------+            <View style={styles.feature}>
+------+              <Ionicons name="bookmark-outline" size={24} color="#FF0000" />
+------+              <Text style={styles.featureText}>Save bookmarks</Text>
+------+            </View>
+------+            <View style={styles.feature}>
+------+              <Ionicons name="share-social-outline" size={24} color="#FF0000" />
+------+              <Text style={styles.featureText}>Share videos</Text>
+------+            </View>
+------           </View>
+-------        </View>
+------ 
+-------        <View style={styles.pricing}>
+-------          <Text style={styles.pricingTitle}>🎉 14-Day Free Trial</Text>
+-------          <Text style={styles.pricingText}>Then choose your plan:</Text>
+-------          <View style={styles.plans}>
+-------            <Text style={styles.plan}>💰 $2/month</Text>
+-------            <Text style={styles.plan}>📅 $14/year</Text>
+-------            <Text style={styles.plan}>♾️ $29 lifetime</Text>
+------+          <View style={styles.pricing}>
+------+            <Text style={styles.pricingTitle}>🎉 14-Day Free Trial</Text>
+------+            <Text style={styles.pricingText}>Then choose your plan:</Text>
+------+            <View style={styles.plans}>
+------+              <Text style={styles.plan}>💰 $2/month</Text>
+------+              <Text style={styles.plan}>📅 $14/year</Text>
+------+              <Text style={styles.plan}>♾️ $29 lifetime</Text>
+------+            </View>
+------           </View>
+-------        </View>
+------ 
+-------        <TouchableOpacity style={styles.loginButton} onPress={login}>
+-------          <Ionicons name="logo-google" size={24} color="#FFF" />
+-------          <Text style={styles.loginButtonText}>Continue with Google</Text>
+-------        </TouchableOpacity>
+------+          <TouchableOpacity style={styles.loginButton} onPress={login}>
+------+            <Ionicons name="logo-google" size={24} color="#FFF" />
+------+            <Text style={styles.loginButtonText}>Continue with Google</Text>
+------+          </TouchableOpacity>
+------ 
+-------        <Text style={styles.terms}>
+-------          By continuing, you agree to our Terms of Service{' \n'}and Privacy Policy
+-------        </Text>
+-------      </View>
+-------    </SafeAreaView>
+------+          <Text style={styles.terms}>
+------+            By continuing, you agree to our Terms of Service{' \n'}and Privacy Policy
+------+          </Text>
+------+        </ScrollView>
+------+      </SafeAreaView>
+------     </View>
 ------   );
 ------ }
------- 
+------@@ -77,11 +78,14 @@ const styles = StyleSheet.create({
+------   safeArea: {
+------     flex: 1,
+------   },
+-------  content: {
+------+  scrollView: {
+------     flex: 1,
+------+  },
+------+  content: {
+------     padding: 24,
+------     paddingBottom: 32,
+------     justifyContent: 'space-between',
+------+    minHeight: '100%',
+------   },
+------   header: {
+------     alignItems: 'center',
+------diff --git a/model.patch b/model.patch
+------index 70ebba3..46dac4b 100644
+--------- a/model.patch
+------+++ b/model.patch
+------@@ -1,12 +0,0 @@
+-------diff --git a/frontend/app/login.tsx b/frontend/app/login.tsx
+-------index 47b5635..18adbf9 100644
+---------- a/frontend/app/login.tsx
+-------+++ b/frontend/app/login.tsx
+-------@@ -65,6 +65,7 @@ export default function Login() {
+-------         </Text>
+-------       </View>
+-------     </SafeAreaView>
+-------+    </View>
+-------   );
+------- }
+------- 
