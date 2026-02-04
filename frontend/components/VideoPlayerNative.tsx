@@ -1,7 +1,21 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, StyleSheet, Platform, AppState, TouchableOpacity, Text, Modal, ScrollView } from 'react-native';
+import { 
+  View, 
+  StyleSheet, 
+  Platform, 
+  TouchableOpacity, 
+  Text, 
+  Modal, 
+  ScrollView,
+  Dimensions,
+  PanResponder,
+  Animated,
+  Alert
+} from 'react-native';
 import { Video, ResizeMode, VideoFullscreenUpdate, AVPlaybackStatus } from 'expo-av';
 import * as ScreenOrientation from 'expo-screen-orientation';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 import { Ionicons } from '@expo/vector-icons';
 
 interface Subtitle {
@@ -13,44 +27,52 @@ interface Subtitle {
 interface VideoPlayerProps {
   streamUrl: string;
   videoTitle?: string;
+  videoId?: string;
   subtitles?: Subtitle[];
   onPlaybackStatusUpdate?: (status: any) => void;
+  onClose?: () => void;
 }
+
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const SCREEN_HEIGHT = Dimensions.get('window').height;
 
 export default function VideoPlayerNative({ 
   streamUrl, 
   videoTitle = '',
+  videoId = '',
   subtitles = [],
-  onPlaybackStatusUpdate 
+  onPlaybackStatusUpdate,
+  onClose
 }: VideoPlayerProps) {
   const videoRef = useRef<Video>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showSubtitleMenu, setShowSubtitleMenu] = useState(false);
   const [selectedSubtitle, setSelectedSubtitle] = useState<string | null>(null);
+  const [isFloating, setIsFloating] = useState(false);
+  const [downloadingSubtitles, setDownloadingSubtitles] = useState(false);
 
-  useEffect(() => {
-    // Handle app state changes for PiP
-    const subscription = AppState.addEventListener('change', async (nextAppState) => {
-      if (Platform.OS === 'android' && nextAppState === 'background') {
-        // Enable PiP when app goes to background
-        try {
-          if (videoRef.current) {
-            const status = await videoRef.current.getStatusAsync();
-            if (status.isLoaded && status.isPlaying) {
-              // Keep playing in background
-              await videoRef.current.setStatusAsync({ shouldPlay: true });
-            }
-          }
-        } catch (error) {
-          console.log('PiP not available:', error);
-        }
+  // Floating window position
+  const pan = useRef(new Animated.ValueXY({ x: SCREEN_WIDTH - 180, y: 100 })).current;
+  
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        pan.setOffset({
+          x: (pan.x as any)._value,
+          y: (pan.y as any)._value
+        });
+      },
+      onPanResponderMove: Animated.event(
+        [null, { dx: pan.x, dy: pan.y }],
+        { useNativeDriver: false }
+      ),
+      onPanResponderRelease: () => {
+        pan.flattenOffset();
       }
-    });
-
-    return () => {
-      subscription.remove();
-    };
-  }, []);
+    })
+  ).current;
 
   const handleFullscreenUpdate = async (event: any) => {
     switch (event.fullscreenUpdate) {
@@ -68,8 +90,71 @@ export default function VideoPlayerNative({
   const selectSubtitle = (subtitleUrl: string | null) => {
     setSelectedSubtitle(subtitleUrl);
     setShowSubtitleMenu(false);
-    // Note: React Native Video doesn't support external subtitles easily
-    // This would need a custom implementation or native module
+  };
+
+  const downloadAllSubtitles = async () => {
+    if (subtitles.length === 0) {
+      Alert.alert('No Subtitles', 'This video has no subtitles available.');
+      return;
+    }
+
+    setDownloadingSubtitles(true);
+    
+    try {
+      const downloadPromises = subtitles.map(async (subtitle) => {
+        try {
+          // Download subtitle file
+          const fileName = `${videoTitle}_${subtitle.language}.${subtitle.url.includes('.vtt') ? 'vtt' : 'srt'}`;
+          const fileUri = FileSystem.documentDirectory + fileName;
+          
+          const downloadResult = await FileSystem.downloadAsync(
+            subtitle.url,
+            fileUri
+          );
+
+          return { success: true, language: subtitle.label, uri: downloadResult.uri };
+        } catch (error) {
+          return { success: false, language: subtitle.label, error };
+        }
+      });
+
+      const results = await Promise.all(downloadPromises);
+      const successCount = results.filter(r => r.success).length;
+      
+      if (successCount > 0) {
+        Alert.alert(
+          'Subtitles Downloaded! ✅',
+          `${successCount} subtitle file(s) downloaded successfully.\n\nThey are saved to your device.`,
+          [
+            {
+              text: 'Share Files',
+              onPress: async () => {
+                // Share the first subtitle file
+                const firstSuccess = results.find(r => r.success);
+                if (firstSuccess && firstSuccess.uri) {
+                  const canShare = await Sharing.isAvailableAsync();
+                  if (canShare) {
+                    await Sharing.shareAsync(firstSuccess.uri);
+                  }
+                }
+              }
+            },
+            { text: 'OK' }
+          ]
+        );
+      } else {
+        Alert.alert('Download Failed', 'Failed to download subtitles. Please try again.');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to download subtitles.');
+      console.error('Subtitle download error:', error);
+    } finally {
+      setDownloadingSubtitles(false);
+    }
+  };
+
+  const toggleFloating = () => {
+    setIsFloating(!isFloating);
   };
 
   const handlePlaybackStatusUpdate = (status: AVPlaybackStatus) => {
@@ -78,6 +163,49 @@ export default function VideoPlayerNative({
     }
   };
 
+  if (isFloating) {
+    // Floating window mode
+    return (
+      <Animated.View
+        style={[
+          styles.floatingContainer,
+          {
+            transform: [
+              { translateX: pan.x },
+              { translateY: pan.y }
+            ]
+          }
+        ]}
+        {...panResponder.panHandlers}
+      >
+        <Video
+          ref={videoRef}
+          source={{ uri: streamUrl }}
+          style={styles.floatingVideo}
+          useNativeControls
+          resizeMode={ResizeMode.CONTAIN}
+          shouldPlay={true}
+          onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
+        />
+        <View style={styles.floatingControls}>
+          <TouchableOpacity 
+            style={styles.floatingButton}
+            onPress={toggleFloating}
+          >
+            <Ionicons name="expand" size={20} color="#FFF" />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.floatingButton}
+            onPress={onClose}
+          >
+            <Ionicons name="close" size={20} color="#FFF" />
+          </TouchableOpacity>
+        </View>
+      </Animated.View>
+    );
+  }
+
+  // Normal player mode
   return (
     <View style={styles.container}>
       <Video
@@ -86,17 +214,44 @@ export default function VideoPlayerNative({
         style={styles.video}
         useNativeControls
         resizeMode={ResizeMode.CONTAIN}
-        shouldPlay={true} // AUTO-PLAY enabled
+        shouldPlay={true}
         onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
         onFullscreenUpdate={handleFullscreenUpdate}
         usePoster={false}
         posterSource={undefined}
       />
 
-      {/* Control Bar - Only show if subtitles available */}
-      {subtitles.length > 0 && (
-        <View style={styles.controlBar}>
-          {/* Subtitle Button */}
+      {/* Control Bar */}
+      <View style={styles.controlBar}>
+        {/* Floating Window Button */}
+        <TouchableOpacity 
+          style={styles.controlButton}
+          onPress={toggleFloating}
+        >
+          <Ionicons name="contract-outline" size={24} color="#FFF" />
+          <Text style={styles.controlButtonText}>Float</Text>
+        </TouchableOpacity>
+
+        {/* Subtitle Download Button */}
+        {subtitles.length > 0 && (
+          <TouchableOpacity 
+            style={styles.controlButton}
+            onPress={downloadAllSubtitles}
+            disabled={downloadingSubtitles}
+          >
+            <Ionicons 
+              name={downloadingSubtitles ? "hourglass-outline" : "download-outline"} 
+              size={24} 
+              color="#FFF" 
+            />
+            <Text style={styles.controlButtonText}>
+              {downloadingSubtitles ? 'Downloading...' : 'DL Subs'}
+            </Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Subtitle Selection Button */}
+        {subtitles.length > 0 && (
           <TouchableOpacity 
             style={styles.controlButton}
             onPress={() => setShowSubtitleMenu(true)}
@@ -104,8 +259,8 @@ export default function VideoPlayerNative({
             <Ionicons name="text-outline" size={24} color="#FFF" />
             <Text style={styles.controlButtonText}>CC</Text>
           </TouchableOpacity>
-        </View>
-      )}
+        )}
+      </View>
 
       {/* Subtitle Menu Modal */}
       <Modal
@@ -154,9 +309,16 @@ export default function VideoPlayerNative({
               ))}
             </ScrollView>
 
-            <Text style={styles.subtitleNote}>
-              Note: Subtitle support coming soon. For now, use native player CC.
-            </Text>
+            <TouchableOpacity 
+              style={styles.downloadAllButton}
+              onPress={() => {
+                setShowSubtitleMenu(false);
+                downloadAllSubtitles();
+              }}
+            >
+              <Ionicons name="download" size={20} color="#FFF" />
+              <Text style={styles.downloadAllText}>Download All Subtitles</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -189,11 +351,42 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     gap: 4,
+    minWidth: 60,
   },
   controlButtonText: {
     color: '#FFF',
     fontSize: 10,
     fontWeight: '600',
+  },
+  floatingContainer: {
+    position: 'absolute',
+    width: 160,
+    height: 90,
+    backgroundColor: '#000',
+    borderRadius: 8,
+    overflow: 'hidden',
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    zIndex: 9999,
+  },
+  floatingVideo: {
+    width: '100%',
+    height: '100%',
+  },
+  floatingControls: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    flexDirection: 'row',
+    gap: 4,
+  },
+  floatingButton: {
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    padding: 6,
+    borderRadius: 6,
   },
   modalOverlay: {
     flex: 1,
@@ -240,11 +433,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#FFF',
   },
-  subtitleNote: {
+  downloadAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FF0000',
+    margin: 16,
     padding: 16,
-    fontSize: 12,
-    color: '#999',
-    textAlign: 'center',
-    fontStyle: 'italic',
+    borderRadius: 12,
+    gap: 8,
+  },
+  downloadAllText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
