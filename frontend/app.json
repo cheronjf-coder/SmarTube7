@@ -24,7 +24,8 @@
       "package": "com.smartube.app",
       "permissions": [
         "android.permission.INTERNET",
-        "android.permission.ACCESS_NETWORK_STATE"
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.SYSTEM_ALERT_WINDOW"
       ],
       "edgeToEdgeEnabled": true,
       "supportsInAppPurchase": false,
