@@ -12,7 +12,7 @@ import {
   Animated,
   Alert
 } from 'react-native';
-import { Video, ResizeMode, VideoFullscreenUpdate, AVPlaybackStatus } from 'expo-av';
+import { Video, ResizeMode, VideoFullscreenUpdate, AVPlaybackStatus, Audio } from 'expo-av';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
