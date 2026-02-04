@@ -214,6 +214,7 @@ export default function Player() {
             <VideoPlayerNative 
               streamUrl={streamUrl}
               videoTitle={videoInfo?.title}
+              videoId={videoId}
             />
           ) : (
             <View style={styles.webPlayerContainer}>
