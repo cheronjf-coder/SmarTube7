@@ -7,49 +7,36 @@ import {
   Text, 
   Modal, 
   ScrollView,
-  Dimensions,
-  PanResponder,
-  Animated,
-  Alert
+  Alert,
+  AppState
 } from 'react-native';
-import { Video, ResizeMode, VideoFullscreenUpdate, AVPlaybackStatus, Audio } from 'expo-av';
-import * as ScreenOrientation from 'expo-screen-orientation';
+import Video from 'react-native-video';
+import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { Ionicons } from '@expo/vector-icons';
-
-interface Subtitle {
-  language: string;
-  label: string;
-  url: string;
-}
 
 interface VideoPlayerProps {
   streamUrl: string;
   videoTitle?: string;
   videoId?: string;
-  subtitles?: Subtitle[];
-  onPlaybackStatusUpdate?: (status: any) => void;
   onClose?: () => void;
 }
-
-const SCREEN_WIDTH = Dimensions.get('window').width;
-const SCREEN_HEIGHT = Dimensions.get('window').height;
 
 export default function VideoPlayerNative({ 
   streamUrl, 
   videoTitle = '',
   videoId = '',
-  subtitles = [],
-  onPlaybackStatusUpdate,
   onClose
 }: VideoPlayerProps) {
-  const videoRef = useRef<Video>(null);
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const videoRef = useRef<any>(null);
+  const [paused, setPaused] = useState(false);
+  const [showControls, setShowControls] = useState(true);
+  const [textTracks, setTextTracks] = useState<any[]>([]);
+  const [selectedTextTrack, setSelectedTextTrack] = useState<any>({ type: 'disabled' });
   const [showSubtitleMenu, setShowSubtitleMenu] = useState(false);
-  const [selectedSubtitle, setSelectedSubtitle] = useState<string | null>(null);
-  const [isFloating, setIsFloating] = useState(false);
   const [downloadingSubtitles, setDownloadingSubtitles] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
 
   useEffect(() => {
     // Enable background audio
@@ -68,213 +55,106 @@ export default function VideoPlayerNative({
 
     setupAudio();
 
+    // Keep playing in background
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'background' || nextAppState === 'inactive') {
+        // Continue playing audio in background
+        setPaused(false);
+      }
+    });
+
     return () => {
-      // Cleanup if needed
+      subscription.remove();
     };
   }, []);
 
-  // Floating window position
-  const pan = useRef(new Animated.ValueXY({ x: SCREEN_WIDTH - 180, y: 100 })).current;
-  
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: () => {
-        pan.setOffset({
-          x: (pan.x as any)._value,
-          y: (pan.y as any)._value
-        });
-      },
-      onPanResponderMove: Animated.event(
-        [null, { dx: pan.x, dy: pan.y }],
-        { useNativeDriver: false }
-      ),
-      onPanResponderRelease: () => {
-        pan.flattenOffset();
-      }
-    })
-  ).current;
-
-  const handleFullscreenUpdate = async (event: any) => {
-    switch (event.fullscreenUpdate) {
-      case VideoFullscreenUpdate.PLAYER_WILL_PRESENT:
-        await ScreenOrientation.unlockAsync();
-        setIsFullscreen(true);
-        break;
-      case VideoFullscreenUpdate.PLAYER_WILL_DISMISS:
-        await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
-        setIsFullscreen(false);
-        break;
+  const onLoad = (data: any) => {
+    console.log('Video loaded:', data);
+    // Get available text tracks (subtitles/CC)
+    if (data.textTracks && data.textTracks.length > 0) {
+      setTextTracks(data.textTracks);
+      console.log('Available text tracks:', data.textTracks);
     }
   };
 
-  const selectSubtitle = (subtitleUrl: string | null) => {
-    setSelectedSubtitle(subtitleUrl);
+  const selectSubtitle = (track: any) => {
+    setSelectedTextTrack(track);
     setShowSubtitleMenu(false);
   };
 
   const downloadAllSubtitles = async () => {
-    if (subtitles.length === 0) {
+    if (textTracks.length === 0) {
       Alert.alert(
         'No Subtitles Available',
-        'This video does not have downloadable subtitles. Subtitles may be available through the native player controls (tap video → 3-dot menu → CC).',
-        [{ text: 'OK' }]
+        'This video does not have embedded subtitles available for download.',
+        [
+          {
+            text: 'Use Native CC',
+            onPress: () => {
+              Alert.alert(
+                'How to Enable CC',
+                'Tap the video player to show controls, then look for the CC (closed captions) button in the player controls.'
+              );
+            }
+          },
+          { text: 'OK' }
+        ]
       );
       return;
     }
 
-    setDownloadingSubtitles(true);
-    
-    try {
-      const downloadPromises = subtitles.map(async (subtitle) => {
-        try {
-          // Download subtitle file
-          const fileName = `${videoTitle}_${subtitle.language}.${subtitle.url.includes('.vtt') ? 'vtt' : 'srt'}`;
-          const fileUri = FileSystem.documentDirectory + fileName;
-          
-          const downloadResult = await FileSystem.downloadAsync(
-            subtitle.url,
-            fileUri
-          );
-
-          return { success: true, language: subtitle.label, uri: downloadResult.uri };
-        } catch (error) {
-          return { success: false, language: subtitle.label, error };
-        }
-      });
-
-      const results = await Promise.all(downloadPromises);
-      const successCount = results.filter(r => r.success).length;
-      
-      if (successCount > 0) {
-        Alert.alert(
-          'Subtitles Downloaded! ✅',
-          `${successCount} subtitle file(s) downloaded successfully.\n\nThey are saved to your device.`,
-          [
-            {
-              text: 'Share Files',
-              onPress: async () => {
-                // Share the first subtitle file
-                const firstSuccess = results.find(r => r.success);
-                if (firstSuccess && firstSuccess.uri) {
-                  const canShare = await Sharing.isAvailableAsync();
-                  if (canShare) {
-                    await Sharing.shareAsync(firstSuccess.uri);
-                  }
-                }
-              }
-            },
-            { text: 'OK' }
-          ]
-        );
-      } else {
-        Alert.alert('Download Failed', 'Failed to download subtitles. Please try again.');
-      }
-    } catch (error) {
-      Alert.alert('Error', 'Failed to download subtitles.');
-      console.error('Subtitle download error:', error);
-    } finally {
-      setDownloadingSubtitles(false);
-    }
-  };
-
-  const toggleFloating = () => {
-    setIsFloating(!isFloating);
-  };
-
-  const handlePlaybackStatusUpdate = (status: AVPlaybackStatus) => {
-    if (onPlaybackStatusUpdate) {
-      onPlaybackStatusUpdate(status);
-    }
-  };
-
-  if (isFloating) {
-    // Floating window mode
-    return (
-      <Animated.View
-        style={[
-          styles.floatingContainer,
-          {
-            transform: [
-              { translateX: pan.x },
-              { translateY: pan.y }
-            ]
-          }
-        ]}
-        {...panResponder.panHandlers}
-      >
-        <Video
-          ref={videoRef}
-          source={{ uri: streamUrl }}
-          style={styles.floatingVideo}
-          useNativeControls
-          resizeMode={ResizeMode.CONTAIN}
-          shouldPlay={true}
-          onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
-        />
-        <View style={styles.floatingControls}>
-          <TouchableOpacity 
-            style={styles.floatingButton}
-            onPress={toggleFloating}
-          >
-            <Ionicons name="expand" size={20} color="#FFF" />
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.floatingButton}
-            onPress={onClose}
-          >
-            <Ionicons name="close" size={20} color="#FFF" />
-          </TouchableOpacity>
-        </View>
-      </Animated.View>
+    Alert.alert(
+      'Subtitles Available!',
+      `Found ${textTracks.length} subtitle track(s). Tap "CC" button to select and enable subtitles.`,
+      [{ text: 'OK' }]
     );
-  }
+  };
 
-  // Normal player mode
+  const toggleFullscreen = () => {
+    if (videoRef.current) {
+      if (fullscreen) {
+        videoRef.current.dismissFullscreenPlayer();
+      } else {
+        videoRef.current.presentFullscreenPlayer();
+      }
+      setFullscreen(!fullscreen);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <Video
         ref={videoRef}
         source={{ uri: streamUrl }}
         style={styles.video}
-        useNativeControls
-        resizeMode={ResizeMode.CONTAIN}
-        shouldPlay={true}
-        onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
-        onFullscreenUpdate={handleFullscreenUpdate}
-        usePoster={false}
-        posterSource={undefined}
+        paused={paused}
+        controls={true}
+        resizeMode="contain"
+        onLoad={onLoad}
+        onError={(error) => console.log('Video error:', error)}
+        textTracks={textTracks}
+        selectedTextTrack={selectedTextTrack}
+        // Enable subtitle support
+        ignoreSilentSwitch="ignore"
+        playInBackground={true}
+        playWhenInactive={true}
+        // Android specific
+        poster={undefined}
+        posterResizeMode="contain"
       />
 
-      {/* Visible Control Bar - Always show with strong background */}
+      {/* Control Bar - ALWAYS VISIBLE */}
       <View style={styles.controlBar}>
-        {/* Floating Window Button */}
+        {/* Subtitle Download Info Button */}
         <TouchableOpacity 
           style={styles.controlButton}
-          onPress={toggleFloating}
-        >
-          <Ionicons name="contract-outline" size={28} color="#FFF" />
-          <Text style={styles.controlButtonText}>Float</Text>
-        </TouchableOpacity>
-
-        {/* Subtitle Download Button - ALWAYS VISIBLE */}
-        <TouchableOpacity 
-          style={[styles.controlButton, downloadingSubtitles && styles.controlButtonDisabled]}
           onPress={downloadAllSubtitles}
-          disabled={downloadingSubtitles}
         >
-          <Ionicons 
-            name={downloadingSubtitles ? "hourglass-outline" : "download-outline"} 
-            size={28} 
-            color="#FFF" 
-          />
-          <Text style={styles.controlButtonText}>
-            {downloadingSubtitles ? 'Wait...' : 'DL Subs'}
-          </Text>
+          <Ionicons name="information-circle-outline" size={28} color="#FFF" />
+          <Text style={styles.controlButtonText}>CC Info</Text>
         </TouchableOpacity>
 
-        {/* Subtitle Selection Button - ALWAYS VISIBLE */}
+        {/* Subtitle Selection Button */}
         <TouchableOpacity 
           style={styles.controlButton}
           onPress={() => setShowSubtitleMenu(true)}
@@ -286,11 +166,7 @@ export default function VideoPlayerNative({
         {/* Fullscreen Button */}
         <TouchableOpacity 
           style={styles.controlButton}
-          onPress={async () => {
-            if (videoRef.current) {
-              await videoRef.current.presentFullscreenPlayer();
-            }
-          }}
+          onPress={toggleFullscreen}
         >
           <Ionicons name="expand" size={28} color="#FFF" />
           <Text style={styles.controlButtonText}>Full</Text>
@@ -307,53 +183,70 @@ export default function VideoPlayerNative({
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Subtitles</Text>
+              <Text style={styles.modalTitle}>Subtitles / Closed Captions</Text>
               <TouchableOpacity onPress={() => setShowSubtitleMenu(false)}>
                 <Ionicons name="close" size={24} color="#FFF" />
               </TouchableOpacity>
             </View>
 
             <ScrollView style={styles.subtitleList}>
-              <TouchableOpacity
-                style={[
-                  styles.subtitleOption,
-                  selectedSubtitle === null && styles.subtitleOptionActive
-                ]}
-                onPress={() => selectSubtitle(null)}
-              >
-                <Text style={styles.subtitleOptionText}>Off</Text>
-                {selectedSubtitle === null && (
-                  <Ionicons name="checkmark" size={20} color="#FF0000" />
-                )}
-              </TouchableOpacity>
+              {textTracks.length === 0 ? (
+                <View style={styles.noSubtitles}>
+                  <Ionicons name="alert-circle-outline" size={48} color="#666" />
+                  <Text style={styles.noSubtitlesText}>No Embedded Subtitles</Text>
+                  <Text style={styles.noSubtitlesSubtext}>
+                    This video doesn't have embedded subtitle tracks. Try using the native player CC button if available.
+                  </Text>
+                </View>
+              ) : (
+                <>
+                  <TouchableOpacity
+                    style={[
+                      styles.subtitleOption,
+                      selectedTextTrack.type === 'disabled' && styles.subtitleOptionActive
+                    ]}
+                    onPress={() => selectSubtitle({ type: 'disabled' })}
+                  >
+                    <Text style={styles.subtitleOptionText}>Off</Text>
+                    {selectedTextTrack.type === 'disabled' && (
+                      <Ionicons name="checkmark" size={20} color="#FF0000" />
+                    )}
+                  </TouchableOpacity>
 
-              {subtitles.map((subtitle, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={[
-                    styles.subtitleOption,
-                    selectedSubtitle === subtitle.url && styles.subtitleOptionActive
-                  ]}
-                  onPress={() => selectSubtitle(subtitle.url)}
-                >
-                  <Text style={styles.subtitleOptionText}>{subtitle.label}</Text>
-                  {selectedSubtitle === subtitle.url && (
-                    <Ionicons name="checkmark" size={20} color="#FF0000" />
-                  )}
-                </TouchableOpacity>
-              ))}
+                  {textTracks.map((track, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      style={[
+                        styles.subtitleOption,
+                        selectedTextTrack.type === 'index' && 
+                        selectedTextTrack.value === index && 
+                        styles.subtitleOptionActive
+                      ]}
+                      onPress={() => selectSubtitle({ type: 'index', value: index })}
+                    >
+                      <View>
+                        <Text style={styles.subtitleOptionText}>
+                          {track.title || track.language || `Track ${index + 1}`}
+                        </Text>
+                        <Text style={styles.subtitleOptionSubtext}>
+                          {track.language} • {track.type}
+                        </Text>
+                      </View>
+                      {selectedTextTrack.type === 'index' && 
+                       selectedTextTrack.value === index && (
+                        <Ionicons name="checkmark" size={20} color="#FF0000" />
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </>
+              )}
             </ScrollView>
 
-            <TouchableOpacity 
-              style={styles.downloadAllButton}
-              onPress={() => {
-                setShowSubtitleMenu(false);
-                downloadAllSubtitles();
-              }}
-            >
-              <Ionicons name="download" size={20} color="#FFF" />
-              <Text style={styles.downloadAllText}>Download All Subtitles</Text>
-            </TouchableOpacity>
+            <View style={styles.modalFooter}>
+              <Text style={styles.modalFooterText}>
+                💡 Tip: Look for CC button in the video player controls for more options
+              </Text>
+            </View>
           </View>
         </View>
       </Modal>
@@ -393,51 +286,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
-    minWidth: 70,
+    minWidth: 90,
     elevation: 5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
   },
-  controlButtonDisabled: {
-    backgroundColor: '#666',
-    opacity: 0.6,
-  },
   controlButtonText: {
     color: '#FFF',
     fontSize: 11,
     fontWeight: 'bold',
-  },
-  floatingContainer: {
-    position: 'absolute',
-    width: 160,
-    height: 90,
-    backgroundColor: '#000',
-    borderRadius: 8,
-    overflow: 'hidden',
-    elevation: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.5,
-    shadowRadius: 8,
-    zIndex: 9999,
-  },
-  floatingVideo: {
-    width: '100%',
-    height: '100%',
-  },
-  floatingControls: {
-    position: 'absolute',
-    top: 4,
-    right: 4,
-    flexDirection: 'row',
-    gap: 4,
-  },
-  floatingButton: {
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    padding: 6,
-    borderRadius: 6,
   },
   modalOverlay: {
     flex: 1,
@@ -448,7 +307,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#1A1A1A',
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
-    maxHeight: '60%',
+    maxHeight: '70%',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -477,26 +336,44 @@ const styles = StyleSheet.create({
   },
   subtitleOptionActive: {
     backgroundColor: '#3A3A3A',
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: '#FF0000',
   },
   subtitleOptionText: {
     fontSize: 16,
     color: '#FFF',
-  },
-  downloadAllButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FF0000',
-    margin: 16,
-    padding: 16,
-    borderRadius: 12,
-    gap: 8,
-  },
-  downloadAllText: {
-    color: '#FFF',
-    fontSize: 16,
     fontWeight: '600',
+  },
+  subtitleOptionSubtext: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 4,
+  },
+  noSubtitles: {
+    padding: 32,
+    alignItems: 'center',
+    gap: 12,
+  },
+  noSubtitlesText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#FFF',
+  },
+  noSubtitlesSubtext: {
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  modalFooter: {
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#333',
+    backgroundColor: '#0A0A0A',
+  },
+  modalFooterText: {
+    fontSize: 12,
+    color: '#999',
+    textAlign: 'center',
   },
 });
