@@ -116,7 +116,11 @@ export default function VideoPlayerNative({
 
   const downloadAllSubtitles = async () => {
     if (subtitles.length === 0) {
-      Alert.alert('No Subtitles', 'This video has no subtitles available.');
+      Alert.alert(
+        'No Subtitles Available',
+        'This video does not have downloadable subtitles. Subtitles may be available through the native player controls (tap video → 3-dot menu → CC).',
+        [{ text: 'OK' }]
+      );
       return;
     }
 
