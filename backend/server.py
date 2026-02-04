@@ -26,8 +26,9 @@ app.add_middleware(
 
 # MongoDB Connection
 MONGO_URL = os.getenv("MONGO_URL", "mongodb://localhost:27017")
+DB_NAME = os.getenv("DB_NAME", "smartube_db")
 client = AsyncIOMotorClient(MONGO_URL)
-db = client.smartube_db
+db = client[DB_NAME]
 
 # YouTube API (will be set when user provides key)
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY", "")
