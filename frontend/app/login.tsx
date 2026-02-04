@@ -19,9 +19,11 @@ export default function Login() {
       <SafeAreaView style={styles.safeArea}>
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
           <View style={styles.header}>
-            <Ionicons name="play-circle" size={80} color="#FF0000" />
-            <Text style={styles.title}>SmarTube</Text>
-            <Text style={styles.subtitle}>Quality YouTube Videos</Text>
+            <Image 
+              source={require('../assets/images/smartube-logo.png')}
+              style={styles.logo}
+              resizeMode="contain"
+            />
             <Text style={styles.description}>
               Watch documentaries, news, and educational content{' \n'}20+ minutes long, ad-free
             </Text>
