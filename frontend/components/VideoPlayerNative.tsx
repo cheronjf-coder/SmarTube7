@@ -98,8 +98,17 @@ export default function VideoPlayerNative({
         <TouchableOpacity 
           style={styles.controlButton}
           onPress={async () => {
-            if (videoRef.current) {
-              await videoRef.current.presentFullscreenPlayer();
+            try {
+              if (videoRef.current) {
+                await videoRef.current.presentFullscreenPlayer();
+              }
+            } catch (error) {
+              console.log('Fullscreen error:', error);
+              Alert.alert(
+                'Fullscreen',
+                'To enter fullscreen:\n\n1. Tap the video player\n2. Look for the fullscreen icon in the video controls\n3. Tap it to expand to fullscreen\n\nOr simply rotate your phone sideways - the video will auto-expand!',
+                [{ text: 'OK' }]
+              );
             }
           }}
         >
