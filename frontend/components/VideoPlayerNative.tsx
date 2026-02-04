@@ -50,6 +50,27 @@ export default function VideoPlayerNative({
   const [selectedSubtitle, setSelectedSubtitle] = useState<string | null>(null);
   const [isFloating, setIsFloating] = useState(false);
   const [downloadingSubtitles, setDownloadingSubtitles] = useState(false);
+  useEffect(() => {
+    // Enable background audio
+    const setupAudio = async () => {
+      try {
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: true,
+          shouldDuckAndroid: true,
+        });
+      } catch (error) {
+        console.log('Error setting up audio:', error);
+      }
+    };
+
+    setupAudio();
+
+    return () => {
+      // Cleanup if needed
+    };
+  }, []);
 
   // Floating window position
   const pan = useRef(new Animated.ValueXY({ x: SCREEN_WIDTH - 180, y: 100 })).current;
