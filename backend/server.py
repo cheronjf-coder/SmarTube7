@@ -293,7 +293,7 @@ async def search_videos(
 @app.get("/api/videos/{video_id}/info")
 async def get_video_info(
     video_id: str,
-    user: User = Depends(check_subscription)
+    user: User = Depends(require_auth)
 ):
     """Get video information"""
     if not YOUTUBE_API_KEY:
