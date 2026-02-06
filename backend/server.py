@@ -130,43 +130,6 @@ async def require_auth(user: Optional[User] = Depends(get_current_user)) -> User
         raise HTTPException(status_code=401, detail="Not authenticated")
     return user
 
-async def check_subscription(user: User = Depends(require_auth)) -> User:
-    """Check if user has active subscription"""
-    # Check trial period (14 days)
-    if user.subscription_type == "trial":
-        if user.trial_start_date:
-            trial_end = user.trial_start_date + timedelta(days=14)
-            if datetime.now(timezone.utc) <= trial_end.replace(tzinfo=timezone.utc):
-                return user
-        # Trial expired
-        await db.users.update_one(
-            {"user_id": user.user_id},
-            {"$set": {"subscription_type": "expired"}}
-        )
-        raise HTTPException(status_code=402, detail="Trial expired. Please subscribe.")
-    
-    # Check lifetime
-    if user.subscription_type == "lifetime":
-        return user
-    
-    # Check monthly/yearly subscription
-    if user.subscription_type in ["monthly", "yearly"]:
-        if user.subscription_end_date:
-            sub_end = user.subscription_end_date
-            if sub_end.tzinfo is None:
-                sub_end = sub_end.replace(tzinfo=timezone.utc)
-            if datetime.now(timezone.utc) <= sub_end:
-                return user
-        # Subscription expired
-        await db.users.update_one(
-            {"user_id": user.user_id},
-            {"$set": {"subscription_type": "expired"}}
-        )
-        raise HTTPException(status_code=402, detail="Subscription expired. Please renew.")
-    
-    # Expired or no subscription
-    raise HTTPException(status_code=402, detail="No active subscription. Please subscribe.")
-
 # ============ AUTH ROUTES ============
 
 @app.post("/api/auth/session")
