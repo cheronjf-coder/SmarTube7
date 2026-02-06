@@ -217,7 +217,7 @@ async def logout(
 @app.post("/api/videos/search")
 async def search_videos(
     request: VideoSearchRequest,
-    user: User = Depends(check_subscription)
+    user: User = Depends(require_auth)
 ):
     """Search YouTube videos with filters"""
     if not YOUTUBE_API_KEY:
