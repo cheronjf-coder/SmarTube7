@@ -40,10 +40,6 @@ class User(BaseModel):
     email: str
     name: str
     picture: Optional[str] = None
-    subscription_type: str = "trial"  # trial, monthly, yearly, lifetime, expired
-    trial_start_date: Optional[datetime] = None
-    subscription_start_date: Optional[datetime] = None
-    subscription_end_date: Optional[datetime] = None
     created_at: datetime
 
 class SessionDataResponse(BaseModel):
