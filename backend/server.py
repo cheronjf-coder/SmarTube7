@@ -331,7 +331,7 @@ async def get_video_info(
 @app.get("/api/videos/{video_id}/stream")
 async def get_video_stream(
     video_id: str,
-    user: User = Depends(check_subscription)
+    user: User = Depends(require_auth)
 ):
     """Get video stream URL (ad-free)"""
     try:
