@@ -202,10 +202,6 @@ async def exchange_session(
             "email": session_response.email,
             "name": session_response.name,
             "picture": session_response.picture,
-            "subscription_type": "trial",
-            "trial_start_date": datetime.now(timezone.utc),
-            "subscription_start_date": None,
-            "subscription_end_date": None,
             "created_at": datetime.now(timezone.utc)
         }
         await db.users.insert_one(new_user)
