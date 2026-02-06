@@ -373,7 +373,7 @@ async def add_bookmark(
     duration: str,
     channel_name: str,
     category: str,
-    user: User = Depends(check_subscription)
+    user: User = Depends(require_auth)
 ):
     """Add bookmark"""
     # Check if already bookmarked
