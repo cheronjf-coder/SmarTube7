@@ -1,24 +1,28 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import * as WebBrowser from 'expo-web-browser';
-import * as Linking from 'expo-linking';
+import { initializeApp } from 'firebase/app';
+import { 
+  getAuth, 
+  signInWithPopup, 
+  GoogleAuthProvider,
+  signOut,
+  onAuthStateChanged,
+  User as FirebaseUser
+} from 'firebase/auth';
 import { Platform } from 'react-native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Constants from 'expo-constants';
+import { firebaseConfig } from '../config/firebase';
 
-WebBrowser.maybeCompleteAuthSession();
-
-const BACKEND_URL = Constants.expoConfig?.extra?.EXPO_PUBLIC_BACKEND_URL || process.env.EXPO_PUBLIC_BACKEND_URL;
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const googleProvider = new GoogleAuthProvider();
 
 interface User {
-  user_id: string;
+  uid: string;
   email: string;
-  name: string;
-  picture?: string;
-  subscription_type: string;
-  trial_start_date?: string;
-  subscription_start_date?: string;
-  subscription_end_date?: string;
+  displayName: string;
+  photoURL?: string;
 }
 
 interface AuthContextType {
@@ -27,149 +31,111 @@ interface AuthContextType {
   login: () => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  firebaseToken: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Get backend URL from environment
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://localhost:8001';
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [firebaseToken, setFirebaseToken] = useState<string | null>(null);
 
   useEffect(() => {
-    checkExistingSession();
-    
-    // Handle deep links (when app is already running)
-    const subscription = Linking.addEventListener('url', ({ url }) => {
-      handleRedirect(url);
-    });
-
-    // Check for cold start deep link
-    Linking.getInitialURL().then((url) => {
-      if (url) {
-        handleRedirect(url);
+    // Listen to auth state changes
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        // Get Firebase ID token
+        const token = await firebaseUser.getIdToken();
+        setFirebaseToken(token);
+        
+        // Store token
+        await AsyncStorage.setItem('firebase_token', token);
+        
+        // Set user
+        const userData: User = {
+          uid: firebaseUser.uid,
+          email: firebaseUser.email || '',
+          displayName: firebaseUser.displayName || 'User',
+          photoURL: firebaseUser.photoURL || undefined,
+        };
+        setUser(userData);
+        
+        // Sync with backend
+        await syncWithBackend(token, userData);
+      } else {
+        setUser(null);
+        setFirebaseToken(null);
+        await AsyncStorage.removeItem('firebase_token');
       }
+      setLoading(false);
     });
 
-    return () => {
-      subscription.remove();
-    };
+    return () => unsubscribe();
   }, []);
 
-  const checkExistingSession = async () => {
+  const syncWithBackend = async (token: string, userData: User) => {
     try {
-      const sessionToken = await AsyncStorage.getItem('session_token');
-      if (sessionToken) {
-        await fetchUser(sessionToken);
-      }
-    } catch (error) {
-      console.error('Error checking session:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchUser = async (sessionToken: string) => {
-    try {
-      const response = await axios.get(`${BACKEND_URL}/api/auth/me`, {
-        headers: {
-          Authorization: `Bearer ${sessionToken}`
+      // Send Firebase token to backend to create/update user
+      await axios.post(
+        `${BACKEND_URL}/api/auth/firebase`,
+        {
+          uid: userData.uid,
+          email: userData.email,
+          name: userData.displayName,
+          picture: userData.photoURL,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         }
-      });
-      setUser(response.data);
-      await AsyncStorage.setItem('session_token', sessionToken);
+      );
     } catch (error) {
-      console.error('Error fetching user:', error);
-      await AsyncStorage.removeItem('session_token');
-      setUser(null);
+      console.error('Error syncing with backend:', error);
     }
-  };
-
-  const handleRedirect = async (url: string) => {
-    try {
-      const { queryParams, path } = Linking.parse(url);
-      const sessionId = queryParams?.session_id as string || extractSessionIdFromHash(url);
-
-      if (sessionId) {
-        setLoading(true);
-        // Exchange session_id for session_token
-        const response = await axios.post(
-          `${BACKEND_URL}/api/auth/session`,
-          {},
-          {
-            headers: {
-              'X-Session-ID': sessionId
-            }
-          }
-        );
-
-        const { session_token } = response.data;
-        await fetchUser(session_token);
-        setLoading(false);
-      }
-    } catch (error) {
-      console.error('Error handling redirect:', error);
-      setLoading(false);
-    }
-  };
-
-  const extractSessionIdFromHash = (url: string): string | null => {
-    const hashMatch = url.match(/#session_id=([^&]+)/);
-    return hashMatch ? hashMatch[1] : null;
   };
 
   const login = async () => {
     try {
-      const redirectUrl = Platform.OS === 'web'
-        ? window.location.origin + '/'
-        : Linking.createURL('/');
-
-      const authUrl = `https://auth.emergentagent.com/?redirect=${encodeURIComponent(redirectUrl)}`;
-
       if (Platform.OS === 'web') {
-        window.location.href = authUrl;
+        // Web: Use popup
+        await signInWithPopup(auth, googleProvider);
       } else {
-        const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUrl);
-        
-        if (result.type === 'success' && result.url) {
-          await handleRedirect(result.url);
-        }
+        // Mobile: Will need expo-auth-session or similar
+        // For now, show alert
+        alert('Please use web version for login. Mobile Google Sign-In requires additional setup.');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login error:', error);
+      alert('Login failed: ' + error.message);
     }
   };
 
   const logout = async () => {
     try {
-      const sessionToken = await AsyncStorage.getItem('session_token');
-      if (sessionToken) {
-        await axios.post(
-          `${BACKEND_URL}/api/auth/logout`,
-          {},
-          {
-            headers: {
-              Authorization: `Bearer ${sessionToken}`
-            }
-          }
-        );
-      }
+      await signOut(auth);
+      await AsyncStorage.removeItem('firebase_token');
+      setUser(null);
+      setFirebaseToken(null);
     } catch (error) {
       console.error('Logout error:', error);
-    } finally {
-      await AsyncStorage.removeItem('session_token');
-      setUser(null);
     }
   };
 
   const refreshUser = async () => {
-    const sessionToken = await AsyncStorage.getItem('session_token');
-    if (sessionToken) {
-      await fetchUser(sessionToken);
+    if (auth.currentUser) {
+      const token = await auth.currentUser.getIdToken(true);
+      setFirebaseToken(token);
+      await AsyncStorage.setItem('firebase_token', token);
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, refreshUser }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, refreshUser, firebaseToken }}>
       {children}
     </AuthContext.Provider>
   );
@@ -182,3 +148,17 @@ export const useAuth = () => {
   }
   return context;
 };
+
+// Axios interceptor to add Firebase token to all requests
+axios.interceptors.request.use(
+  async (config) => {
+    const token = await AsyncStorage.getItem('firebase_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
