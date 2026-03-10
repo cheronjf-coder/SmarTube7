@@ -13,11 +13,10 @@ WebBrowser.maybeCompleteAuthSession();
 // Check if Firebase is properly configured
 const isFirebaseConfigured = firebaseConfig.apiKey && firebaseConfig.apiKey !== "YOUR_FIREBASE_API_KEY";
 
-// Google OAuth Client IDs
-// You need to get these from Google Cloud Console
-const GOOGLE_WEB_CLIENT_ID = '567378036880-YOUR_WEB_CLIENT_ID.apps.googleusercontent.com';
-const GOOGLE_ANDROID_CLIENT_ID = '567378036880-YOUR_ANDROID_CLIENT_ID.apps.googleusercontent.com';
-const GOOGLE_IOS_CLIENT_ID = '567378036880-YOUR_IOS_CLIENT_ID.apps.googleusercontent.com';
+// Google OAuth Client IDs from Google Cloud Console
+const GOOGLE_WEB_CLIENT_ID = '63652025463-k4l03astv51coo60olrgqfn6ft8ufbuk.apps.googleusercontent.com';
+const GOOGLE_ANDROID_CLIENT_ID = '63652025463-a9dgn5ciu4dahitrlsb9b7698ljtnu5n.apps.googleusercontent.com';
+const GOOGLE_IOS_CLIENT_ID = '63652025463-k4l03astv51coo60olrgqfn6ft8ufbuk.apps.googleusercontent.com'; // Use web client for iOS
 
 let app: any = null;
 let auth: any = null;
