@@ -1,11 +1,11 @@
 // Firebase configuration for SmarTube
-// Replace these values with your own from Firebase Console
+// Your web app's Firebase configuration
 
 export const firebaseConfig = {
-  apiKey: "YOUR_FIREBASE_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyBP0YRA783VNK-SRC6xw-k9Z7NJKkofQz0",
+  authDomain: "smartube-96955.firebaseapp.com",
+  projectId: "smartube-96955",
+  storageBucket: "smartube-96955.firebasestorage.app",
+  messagingSenderId: "567378036880",
+  appId: "1:567378036880:web:ca3e3d996608ef941d7015"
 };
