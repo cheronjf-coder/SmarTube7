@@ -59,6 +59,16 @@ const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://smartube2.on
 // Check if running in Expo Go
 const isExpoGo = Constants.appOwnership === 'expo';
 
+// OAuth redirect URL (through backend for APK, through Expo proxy for Expo Go)
+const getOAuthRedirectUri = () => {
+  if (isExpoGo) {
+    return 'https://auth.expo.io/@jfcheron76/smartube';
+  } else {
+    // For standalone APK, use backend as intermediary
+    return `${BACKEND_URL}/api/auth/google/callback`;
+  }
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -206,17 +216,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loginWithGoogleMobile = async () => {
     try {
-      // For standalone APK: use custom scheme
-      // For Expo Go: use auth.expo.io proxy
-      let redirectUri: string;
-      
-      if (isExpoGo) {
-        // Expo Go: use auth proxy with your username
-        redirectUri = 'https://auth.expo.io/@jfcheron76/smartube';
-      } else {
-        // Standalone APK: use custom scheme
-        redirectUri = 'smartube://auth';
-      }
+      // Get the appropriate redirect URI
+      const redirectUri = getOAuthRedirectUri();
       
       const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
         `client_id=${GOOGLE_WEB_CLIENT_ID}&` +
@@ -228,7 +229,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('Redirect URI:', redirectUri);
       console.log('Is Expo Go:', isExpoGo);
 
-      const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
+      // For standalone APK, we use a different flow
+      // The backend callback page will redirect to smartube://auth with the token
+      const result = await WebBrowser.openAuthSessionAsync(
+        authUrl, 
+        isExpoGo ? redirectUri : 'smartube://auth'
+      );
       
       console.log('Auth result:', result);
 

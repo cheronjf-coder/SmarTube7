@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, Depends, Header, Response, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, Field
 from typing import Optional, List
@@ -33,6 +33,91 @@ db = client[DB_NAME]
 
 # YouTube API (will be set when user provides key)
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY", "")
+
+# Google OAuth Config
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "63652025463-k4l03astv51coo60olrgqfn6ft8ufbuk.apps.googleusercontent.com")
+BACKEND_URL = os.getenv("BACKEND_URL", "https://smartube2.onrender.com")
+
+# ============ OAUTH CALLBACK FOR MOBILE APP ============
+
+@app.get("/api/auth/google/callback", response_class=HTMLResponse)
+async def google_oauth_callback(request: Request):
+    """
+    This page receives the OAuth token from Google and redirects to the mobile app.
+    The token is passed in the URL fragment (#access_token=...) by Google.
+    """
+    return """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>SmarTube - Completing Login...</title>
+        <style>
+            body { 
+                font-family: Arial, sans-serif; 
+                display: flex; 
+                justify-content: center; 
+                align-items: center; 
+                height: 100vh; 
+                margin: 0;
+                background: #1a1a1a;
+                color: white;
+            }
+            .container { text-align: center; }
+            .spinner { 
+                border: 4px solid #333; 
+                border-top: 4px solid #ff0000; 
+                border-radius: 50%; 
+                width: 40px; 
+                height: 40px; 
+                animation: spin 1s linear infinite; 
+                margin: 20px auto;
+            }
+            @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h2>🥷 SmarTube</h2>
+            <div class="spinner"></div>
+            <p>Completing login...</p>
+            <p id="status"></p>
+        </div>
+        <script>
+            // Get the access token from URL fragment
+            const hash = window.location.hash.substring(1);
+            const params = new URLSearchParams(hash);
+            const accessToken = params.get('access_token');
+            
+            if (accessToken) {
+                // Redirect to the app with the token
+                document.getElementById('status').textContent = 'Redirecting to app...';
+                window.location.href = 'smartube://auth#access_token=' + accessToken;
+                
+                // Fallback message if redirect doesn't work
+                setTimeout(() => {
+                    document.getElementById('status').innerHTML = 
+                        'If the app did not open, <a href="smartube://auth#access_token=' + accessToken + '" style="color: #ff6666;">tap here</a>';
+                }, 2000);
+            } else {
+                document.getElementById('status').textContent = 'Login failed. Please try again.';
+            }
+        </script>
+    </body>
+    </html>
+    """
+
+@app.get("/api/auth/google/start")
+async def start_google_oauth():
+    """Returns the Google OAuth URL for the mobile app to open"""
+    redirect_uri = f"{BACKEND_URL}/api/auth/google/callback"
+    auth_url = (
+        f"https://accounts.google.com/o/oauth2/v2/auth?"
+        f"client_id={GOOGLE_CLIENT_ID}&"
+        f"redirect_uri={redirect_uri}&"
+        f"response_type=token&"
+        f"scope=email%20profile"
+    )
+    return {"auth_url": auth_url, "redirect_uri": redirect_uri}
 
 # ============ STATIC PAGES FOR OAUTH ============
 
