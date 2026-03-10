@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, Depends, Header, Response, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, Field
 from typing import Optional, List
@@ -32,6 +33,139 @@ db = client[DB_NAME]
 
 # YouTube API (will be set when user provides key)
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY", "")
+
+# ============ STATIC PAGES FOR OAUTH ============
+
+@app.get("/", response_class=HTMLResponse)
+async def home_page():
+    return """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>SmarTube - Ad-Free YouTube Experience</title>
+        <style>
+            body { font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; }
+            h1 { color: #ff0000; }
+            .feature { margin: 20px 0; padding: 15px; background: #f5f5f5; border-radius: 8px; }
+        </style>
+    </head>
+    <body>
+        <h1>🥷 SmarTube</h1>
+        <p><strong>Cut Ads, Shorts and Nonsense</strong></p>
+        <p>SmarTube is a mobile app that lets you watch quality YouTube content (20+ minutes) without ads.</p>
+        
+        <div class="feature">
+            <h3>Features:</h3>
+            <ul>
+                <li>Ad-free video playback</li>
+                <li>Focus on documentaries, news, and educational content</li>
+                <li>Videos 20+ minutes only - no shorts!</li>
+                <li>Bookmark your favorite videos</li>
+                <li>Background audio playback</li>
+            </ul>
+        </div>
+        
+        <p>Download the app from the Google Play Store (coming soon).</p>
+        <p>Contact: <a href="mailto:support@smartube.app">support@smartube.app</a></p>
+    </body>
+    </html>
+    """
+
+@app.get("/privacy", response_class=HTMLResponse)
+async def privacy_policy():
+    return """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Privacy Policy - SmarTube</title>
+        <style>
+            body { font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; line-height: 1.6; }
+            h1 { color: #333; }
+            h2 { color: #666; margin-top: 30px; }
+        </style>
+    </head>
+    <body>
+        <h1>Privacy Policy</h1>
+        <p><strong>Last updated:</strong> March 2025</p>
+        
+        <h2>1. Information We Collect</h2>
+        <p>SmarTube collects minimal information necessary to provide our service:</p>
+        <ul>
+            <li><strong>Google Account Information:</strong> When you sign in with Google, we receive your email address, name, and profile picture.</li>
+            <li><strong>Bookmarks:</strong> Videos you choose to bookmark are stored in our database.</li>
+        </ul>
+        
+        <h2>2. How We Use Your Information</h2>
+        <p>We use your information to:</p>
+        <ul>
+            <li>Authenticate your account</li>
+            <li>Save and sync your bookmarks across devices</li>
+            <li>Provide personalized video recommendations</li>
+        </ul>
+        
+        <h2>3. Data Storage</h2>
+        <p>Your data is stored securely on MongoDB Atlas servers. We do not sell or share your personal information with third parties.</p>
+        
+        <h2>4. Third-Party Services</h2>
+        <p>SmarTube uses:</p>
+        <ul>
+            <li>Google Sign-In for authentication</li>
+            <li>YouTube API for video content</li>
+        </ul>
+        
+        <h2>5. Data Deletion</h2>
+        <p>You can request deletion of your account and data by contacting us at support@smartube.app.</p>
+        
+        <h2>6. Contact</h2>
+        <p>For privacy concerns, contact: support@smartube.app</p>
+    </body>
+    </html>
+    """
+
+@app.get("/terms", response_class=HTMLResponse)
+async def terms_of_service():
+    return """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Terms of Service - SmarTube</title>
+        <style>
+            body { font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; line-height: 1.6; }
+            h1 { color: #333; }
+            h2 { color: #666; margin-top: 30px; }
+        </style>
+    </head>
+    <body>
+        <h1>Terms of Service</h1>
+        <p><strong>Last updated:</strong> March 2025</p>
+        
+        <h2>1. Acceptance of Terms</h2>
+        <p>By using SmarTube, you agree to these terms of service.</p>
+        
+        <h2>2. Description of Service</h2>
+        <p>SmarTube provides an alternative interface for viewing YouTube content. We do not host any video content ourselves.</p>
+        
+        <h2>3. User Responsibilities</h2>
+        <ul>
+            <li>You must be at least 13 years old to use this service</li>
+            <li>You are responsible for maintaining the security of your account</li>
+            <li>You agree not to use the service for any illegal purposes</li>
+        </ul>
+        
+        <h2>4. Content</h2>
+        <p>All video content is provided by YouTube. SmarTube is not responsible for the content of videos.</p>
+        
+        <h2>5. Disclaimer</h2>
+        <p>SmarTube is provided "as is" without warranties of any kind. We are not affiliated with YouTube or Google.</p>
+        
+        <h2>6. Changes to Terms</h2>
+        <p>We may update these terms at any time. Continued use of the service constitutes acceptance of new terms.</p>
+        
+        <h2>7. Contact</h2>
+        <p>Questions about these terms: support@smartube.app</p>
+    </body>
+    </html>
+    """
 
 # ============ PYDANTIC MODELS ============
 
