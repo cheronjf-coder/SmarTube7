@@ -1,22 +1,20 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Platform, Alert } from 'react-native';
+import { Platform, Alert, Linking } from 'react-native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as AuthSession from 'expo-auth-session';
-import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
 import { firebaseConfig } from '../config/firebase';
 
 // Complete auth session for web
-WebBrowser.maybeCompleteAuthSession();
+if (Platform.OS === 'web') {
+  WebBrowser.maybeCompleteAuthSession();
+}
 
 // Check if Firebase is properly configured
 const isFirebaseConfigured = firebaseConfig.apiKey && firebaseConfig.apiKey !== "YOUR_FIREBASE_API_KEY";
 
 // Google OAuth Client IDs from Google Cloud Console
 const GOOGLE_WEB_CLIENT_ID = '63652025463-k4l03astv51coo60olrgqfn6ft8ufbuk.apps.googleusercontent.com';
-const GOOGLE_ANDROID_CLIENT_ID = '63652025463-a9dgn5ciu4dahitrlsb9b7698ljtnu5n.apps.googleusercontent.com';
-const GOOGLE_IOS_CLIENT_ID = '63652025463-k4l03astv51coo60olrgqfn6ft8ufbuk.apps.googleusercontent.com'; // Use web client for iOS
 
 let app: any = null;
 let auth: any = null;
@@ -62,50 +60,64 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [sessionToken, setSessionToken] = useState<string | null>(null);
 
-  // Google Auth Request for mobile
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    webClientId: GOOGLE_WEB_CLIENT_ID,
-    androidClientId: GOOGLE_ANDROID_CLIENT_ID,
-    iosClientId: GOOGLE_IOS_CLIENT_ID,
-    scopes: ['profile', 'email'],
-  });
-
-  // Handle Google Auth response for mobile
   useEffect(() => {
-    if (response?.type === 'success') {
-      const { authentication } = response;
-      if (authentication?.accessToken) {
-        // Fetch user info from Google
-        fetchGoogleUserInfo(authentication.accessToken);
+    // Handle deep link for OAuth callback
+    const handleDeepLink = async (event: { url: string }) => {
+      console.log('Deep link received:', event.url);
+      if (event.url.includes('access_token=')) {
+        await handleOAuthCallback(event.url);
       }
-    }
-  }, [response]);
+    };
 
-  const fetchGoogleUserInfo = async (accessToken: string) => {
+    // Subscribe to deep link events
+    const subscription = Linking.addEventListener('url', handleDeepLink);
+
+    // Check for initial URL (if app was opened via deep link)
+    Linking.getInitialURL().then((url) => {
+      if (url && url.includes('access_token=')) {
+        handleOAuthCallback(url);
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
+  const handleOAuthCallback = async (url: string) => {
     try {
-      const res = await fetch('https://www.googleapis.com/userinfo/v2/me', {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      const userInfo = await res.json();
-      
-      const userData: User = {
-        uid: userInfo.id,
-        email: userInfo.email,
-        displayName: userInfo.name,
-        photoURL: userInfo.picture,
-      };
-      
-      setUser(userData);
-      
-      // Sync with backend
-      const token = await syncWithBackend(userData);
-      if (token) {
-        setSessionToken(token);
-        await AsyncStorage.setItem('session_token', token);
+      // Parse the access token from the URL
+      const hashPart = url.split('#')[1];
+      if (hashPart) {
+        const params = new URLSearchParams(hashPart);
+        const accessToken = params.get('access_token');
+        
+        if (accessToken) {
+          // Fetch user info from Google
+          const userInfoResponse = await fetch('https://www.googleapis.com/userinfo/v2/me', {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          });
+          const userInfo = await userInfoResponse.json();
+          
+          const userData: User = {
+            uid: userInfo.id,
+            email: userInfo.email,
+            displayName: userInfo.name,
+            photoURL: userInfo.picture,
+          };
+          
+          setUser(userData);
+          
+          // Sync with backend
+          const token = await syncWithBackend(userData);
+          if (token) {
+            setSessionToken(token);
+            await AsyncStorage.setItem('session_token', token);
+          }
+        }
       }
     } catch (error) {
-      console.error('Error fetching Google user info:', error);
-      Alert.alert('Login Failed', 'Could not fetch user information');
+      console.error('Error handling OAuth callback:', error);
     }
   };
 
@@ -116,28 +128,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const savedToken = await AsyncStorage.getItem('session_token');
         if (savedToken) {
           // Verify session is still valid by making a request
-          const response = await axios.get(`${BACKEND_URL}/api/auth/me`, {
-            headers: { Authorization: `Bearer ${savedToken}` }
-          });
-          
-          if (response.data) {
-            setUser({
-              uid: response.data.user_id,
-              email: response.data.email,
-              displayName: response.data.name,
-              photoURL: response.data.picture,
+          try {
+            const response = await axios.get(`${BACKEND_URL}/api/auth/me`, {
+              headers: { Authorization: `Bearer ${savedToken}` }
             });
-            setSessionToken(savedToken);
+            
+            if (response.data) {
+              setUser({
+                uid: response.data.user_id,
+                email: response.data.email,
+                displayName: response.data.name,
+                photoURL: response.data.picture,
+              });
+              setSessionToken(savedToken);
+            }
+          } catch (e) {
+            // Session invalid, clear it
+            await AsyncStorage.removeItem('session_token');
           }
         }
       } catch (error) {
-        // Session invalid, clear it
-        await AsyncStorage.removeItem('session_token');
+        console.error('Error checking session:', error);
       }
       setLoading(false);
     };
 
-    // If Firebase is configured, also listen to Firebase auth changes (for web)
+    // If Firebase is configured and on web, listen to Firebase auth changes
     if (isFirebaseConfigured && auth && Platform.OS === 'web') {
       const { onAuthStateChanged } = require('firebase/auth');
       const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: any) => {
@@ -154,11 +170,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (token) {
             setSessionToken(token);
             await AsyncStorage.setItem('session_token', token);
-          }
-        } else {
-          // Don't clear user if they logged in via mobile OAuth
-          if (!sessionToken) {
-            setUser(null);
           }
         }
         setLoading(false);
@@ -189,6 +200,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const loginWithGoogleMobile = async () => {
+    try {
+      // Use the app scheme for redirect
+      const redirectUri = 'smartube://auth';
+      
+      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+        `client_id=${GOOGLE_WEB_CLIENT_ID}&` +
+        `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+        `response_type=token&` +
+        `scope=${encodeURIComponent('email profile')}`;
+
+      console.log('Opening auth URL:', authUrl);
+
+      const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
+      
+      console.log('Auth result:', result);
+
+      if (result.type === 'success' && result.url) {
+        await handleOAuthCallback(result.url);
+      } else if (result.type === 'cancel') {
+        console.log('User cancelled login');
+      }
+    } catch (error: any) {
+      console.error('Mobile login error:', error);
+      Alert.alert('Login Error', error.message || 'Failed to login with Google');
+    }
+  };
+
   const login = async () => {
     if (!isFirebaseConfigured) {
       Alert.alert(
@@ -205,15 +244,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const { signInWithPopup } = require('firebase/auth');
         await signInWithPopup(auth, googleProvider);
       } else {
-        // Mobile: Use expo-auth-session
-        if (request) {
-          await promptAsync();
-        } else {
-          Alert.alert(
-            'Login Error',
-            'Google Sign-In is not properly configured. Please check the OAuth client IDs.'
-          );
-        }
+        // Mobile: Use WebBrowser OAuth
+        await loginWithGoogleMobile();
       }
     } catch (error: any) {
       console.error('Login error:', error);
