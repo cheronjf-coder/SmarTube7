@@ -2,10 +2,22 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Platform, Alert } from 'react-native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as AuthSession from 'expo-auth-session';
+import * as Google from 'expo-auth-session/providers/google';
+import * as WebBrowser from 'expo-web-browser';
 import { firebaseConfig } from '../config/firebase';
+
+// Complete auth session for web
+WebBrowser.maybeCompleteAuthSession();
 
 // Check if Firebase is properly configured
 const isFirebaseConfigured = firebaseConfig.apiKey && firebaseConfig.apiKey !== "YOUR_FIREBASE_API_KEY";
+
+// Google OAuth Client IDs
+// You need to get these from Google Cloud Console
+const GOOGLE_WEB_CLIENT_ID = '567378036880-YOUR_WEB_CLIENT_ID.apps.googleusercontent.com';
+const GOOGLE_ANDROID_CLIENT_ID = '567378036880-YOUR_ANDROID_CLIENT_ID.apps.googleusercontent.com';
+const GOOGLE_IOS_CLIENT_ID = '567378036880-YOUR_IOS_CLIENT_ID.apps.googleusercontent.com';
 
 let app: any = null;
 let auth: any = null;
@@ -51,46 +63,116 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [sessionToken, setSessionToken] = useState<string | null>(null);
 
-  useEffect(() => {
-    // If Firebase is not configured, just set loading to false
-    if (!isFirebaseConfigured || !auth) {
-      setLoading(false);
-      return;
-    }
+  // Google Auth Request for mobile
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    webClientId: GOOGLE_WEB_CLIENT_ID,
+    androidClientId: GOOGLE_ANDROID_CLIENT_ID,
+    iosClientId: GOOGLE_IOS_CLIENT_ID,
+    scopes: ['profile', 'email'],
+  });
 
-    // Listen to auth state changes
-    const { onAuthStateChanged } = require('firebase/auth');
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: any) => {
-      if (firebaseUser) {
-        // Set user immediately for UI
-        const userData: User = {
-          uid: firebaseUser.uid,
-          email: firebaseUser.email || '',
-          displayName: firebaseUser.displayName || 'User',
-          photoURL: firebaseUser.photoURL || undefined,
-        };
-        setUser(userData);
-        
-        // Sync with backend and get session token
-        const token = await syncWithBackend(userData);
-        if (token) {
-          setSessionToken(token);
-          await AsyncStorage.setItem('session_token', token);
+  // Handle Google Auth response for mobile
+  useEffect(() => {
+    if (response?.type === 'success') {
+      const { authentication } = response;
+      if (authentication?.accessToken) {
+        // Fetch user info from Google
+        fetchGoogleUserInfo(authentication.accessToken);
+      }
+    }
+  }, [response]);
+
+  const fetchGoogleUserInfo = async (accessToken: string) => {
+    try {
+      const res = await fetch('https://www.googleapis.com/userinfo/v2/me', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const userInfo = await res.json();
+      
+      const userData: User = {
+        uid: userInfo.id,
+        email: userInfo.email,
+        displayName: userInfo.name,
+        photoURL: userInfo.picture,
+      };
+      
+      setUser(userData);
+      
+      // Sync with backend
+      const token = await syncWithBackend(userData);
+      if (token) {
+        setSessionToken(token);
+        await AsyncStorage.setItem('session_token', token);
+      }
+    } catch (error) {
+      console.error('Error fetching Google user info:', error);
+      Alert.alert('Login Failed', 'Could not fetch user information');
+    }
+  };
+
+  useEffect(() => {
+    // Check for existing session on mount
+    const checkExistingSession = async () => {
+      try {
+        const savedToken = await AsyncStorage.getItem('session_token');
+        if (savedToken) {
+          // Verify session is still valid by making a request
+          const response = await axios.get(`${BACKEND_URL}/api/auth/me`, {
+            headers: { Authorization: `Bearer ${savedToken}` }
+          });
+          
+          if (response.data) {
+            setUser({
+              uid: response.data.user_id,
+              email: response.data.email,
+              displayName: response.data.name,
+              photoURL: response.data.picture,
+            });
+            setSessionToken(savedToken);
+          }
         }
-      } else {
-        setUser(null);
-        setSessionToken(null);
+      } catch (error) {
+        // Session invalid, clear it
         await AsyncStorage.removeItem('session_token');
       }
       setLoading(false);
-    });
+    };
 
-    return () => unsubscribe();
+    // If Firebase is configured, also listen to Firebase auth changes (for web)
+    if (isFirebaseConfigured && auth && Platform.OS === 'web') {
+      const { onAuthStateChanged } = require('firebase/auth');
+      const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: any) => {
+        if (firebaseUser) {
+          const userData: User = {
+            uid: firebaseUser.uid,
+            email: firebaseUser.email || '',
+            displayName: firebaseUser.displayName || 'User',
+            photoURL: firebaseUser.photoURL || undefined,
+          };
+          setUser(userData);
+          
+          const token = await syncWithBackend(userData);
+          if (token) {
+            setSessionToken(token);
+            await AsyncStorage.setItem('session_token', token);
+          }
+        } else {
+          // Don't clear user if they logged in via mobile OAuth
+          if (!sessionToken) {
+            setUser(null);
+          }
+        }
+        setLoading(false);
+      });
+
+      return () => unsubscribe();
+    } else {
+      checkExistingSession();
+    }
   }, []);
 
   const syncWithBackend = async (userData: User): Promise<string | null> => {
     try {
-      // Send Firebase user data to backend to create/update user
       const response = await axios.post(
         `${BACKEND_URL}/api/auth/firebase`,
         {
@@ -101,7 +183,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       );
       
-      // Return the session token from backend
       return response.data.session_token;
     } catch (error) {
       console.error('Error syncing with backend:', error);
@@ -110,7 +191,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const login = async () => {
-    if (!isFirebaseConfigured || !auth) {
+    if (!isFirebaseConfigured) {
       Alert.alert(
         'Setup Required',
         'Firebase is not configured yet. Please follow the setup guide to add your Firebase credentials.',
@@ -121,15 +202,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     try {
       if (Platform.OS === 'web') {
-        // Web: Use popup
+        // Web: Use Firebase popup
         const { signInWithPopup } = require('firebase/auth');
         await signInWithPopup(auth, googleProvider);
       } else {
-        // Mobile: Will need expo-auth-session or similar
-        Alert.alert(
-          'Mobile Login',
-          'Please use web version for login. Mobile Google Sign-In requires additional setup.'
-        );
+        // Mobile: Use expo-auth-session
+        if (request) {
+          await promptAsync();
+        } else {
+          Alert.alert(
+            'Login Error',
+            'Google Sign-In is not properly configured. Please check the OAuth client IDs.'
+          );
+        }
       }
     } catch (error: any) {
       console.error('Login error:', error);
@@ -139,10 +224,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     try {
-      if (auth) {
+      // Sign out from Firebase (for web)
+      if (auth && Platform.OS === 'web') {
         const { signOut } = require('firebase/auth');
         await signOut(auth);
       }
+      
+      // Clear local session
       await AsyncStorage.removeItem('session_token');
       setUser(null);
       setSessionToken(null);
