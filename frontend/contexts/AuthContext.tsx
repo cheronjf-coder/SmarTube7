@@ -202,8 +202,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loginWithGoogleMobile = async () => {
     try {
-      // Use Expo auth proxy for Expo Go - use your Expo username
-      const redirectUri = 'https://auth.expo.io/@jfcheron76/smartube';
+      // For standalone APK, use custom scheme
+      // For Expo Go, use auth.expo.io proxy
+      const isExpoGo = !__DEV__ ? false : true; // In production APK, this will be false
+      
+      let redirectUri: string;
+      if (isExpoGo) {
+        // Expo Go: use auth proxy with your username
+        redirectUri = 'https://auth.expo.io/@jfcheron76/smartube';
+      } else {
+        // Standalone APK: use custom scheme
+        redirectUri = 'smartube://auth';
+      }
       
       const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
         `client_id=${GOOGLE_WEB_CLIENT_ID}&` +
@@ -212,6 +222,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         `scope=${encodeURIComponent('email profile')}`;
 
       console.log('Opening auth URL:', authUrl);
+      console.log('Redirect URI:', redirectUri);
 
       const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
       
