@@ -3,6 +3,7 @@ import { Platform, Alert, Linking } from 'react-native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as WebBrowser from 'expo-web-browser';
+import Constants from 'expo-constants';
 import { firebaseConfig } from '../config/firebase';
 
 // Complete auth session for web
@@ -53,7 +54,10 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Get backend URL from environment
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://localhost:8001';
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://smartube2.onrender.com';
+
+// Check if running in Expo Go
+const isExpoGo = Constants.appOwnership === 'expo';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -202,11 +206,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loginWithGoogleMobile = async () => {
     try {
-      // For standalone APK, use custom scheme
-      // For Expo Go, use auth.expo.io proxy
-      const isExpoGo = !__DEV__ ? false : true; // In production APK, this will be false
-      
+      // For standalone APK: use custom scheme
+      // For Expo Go: use auth.expo.io proxy
       let redirectUri: string;
+      
       if (isExpoGo) {
         // Expo Go: use auth proxy with your username
         redirectUri = 'https://auth.expo.io/@jfcheron76/smartube';
@@ -223,6 +226,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       console.log('Opening auth URL:', authUrl);
       console.log('Redirect URI:', redirectUri);
+      console.log('Is Expo Go:', isExpoGo);
 
       const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
       
