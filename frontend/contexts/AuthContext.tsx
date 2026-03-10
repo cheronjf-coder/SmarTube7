@@ -1,22 +1,28 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { initializeApp } from 'firebase/app';
-import { 
-  getAuth, 
-  signInWithPopup, 
-  GoogleAuthProvider,
-  signOut,
-  onAuthStateChanged,
-  User as FirebaseUser
-} from 'firebase/auth';
-import { Platform } from 'react-native';
+import { Platform, Alert } from 'react-native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { firebaseConfig } from '../config/firebase';
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const googleProvider = new GoogleAuthProvider();
+// Check if Firebase is properly configured
+const isFirebaseConfigured = firebaseConfig.apiKey && firebaseConfig.apiKey !== "YOUR_FIREBASE_API_KEY";
+
+let app: any = null;
+let auth: any = null;
+let googleProvider: any = null;
+
+// Only initialize Firebase if configured
+if (isFirebaseConfigured) {
+  try {
+    const { initializeApp } = require('firebase/app');
+    const { getAuth, GoogleAuthProvider } = require('firebase/auth');
+    app = initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    googleProvider = new GoogleAuthProvider();
+  } catch (error) {
+    console.warn('Firebase initialization failed:', error);
+  }
+}
 
 interface User {
   uid: string;
@@ -32,6 +38,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
   firebaseToken: string | null;
+  isConfigured: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -45,8 +52,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [firebaseToken, setFirebaseToken] = useState<string | null>(null);
 
   useEffect(() => {
+    // If Firebase is not configured, just set loading to false
+    if (!isFirebaseConfigured || !auth) {
+      setLoading(false);
+      return;
+    }
+
     // Listen to auth state changes
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    const { onAuthStateChanged } = require('firebase/auth');
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: any) => {
       if (firebaseUser) {
         // Get Firebase ID token
         const token = await firebaseUser.getIdToken();
@@ -100,24 +114,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const login = async () => {
+    if (!isFirebaseConfigured || !auth) {
+      Alert.alert(
+        'Setup Required',
+        'Firebase is not configured yet. Please follow the setup guide to add your Firebase credentials.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
     try {
       if (Platform.OS === 'web') {
         // Web: Use popup
+        const { signInWithPopup } = require('firebase/auth');
         await signInWithPopup(auth, googleProvider);
       } else {
         // Mobile: Will need expo-auth-session or similar
-        // For now, show alert
-        alert('Please use web version for login. Mobile Google Sign-In requires additional setup.');
+        Alert.alert(
+          'Mobile Login',
+          'Please use web version for login. Mobile Google Sign-In requires additional setup.'
+        );
       }
     } catch (error: any) {
       console.error('Login error:', error);
-      alert('Login failed: ' + error.message);
+      Alert.alert('Login Failed', error.message);
     }
   };
 
   const logout = async () => {
     try {
-      await signOut(auth);
+      if (auth) {
+        const { signOut } = require('firebase/auth');
+        await signOut(auth);
+      }
       await AsyncStorage.removeItem('firebase_token');
       setUser(null);
       setFirebaseToken(null);
@@ -127,7 +156,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const refreshUser = async () => {
-    if (auth.currentUser) {
+    if (auth && auth.currentUser) {
       const token = await auth.currentUser.getIdToken(true);
       setFirebaseToken(token);
       await AsyncStorage.setItem('firebase_token', token);
@@ -135,7 +164,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, refreshUser, firebaseToken }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      loading, 
+      login, 
+      logout, 
+      refreshUser, 
+      firebaseToken,
+      isConfigured: isFirebaseConfigured 
+    }}>
       {children}
     </AuthContext.Provider>
   );

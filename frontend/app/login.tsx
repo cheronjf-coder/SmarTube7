@@ -25,7 +25,7 @@ export default function Login() {
               resizeMode="contain"
             />
             <Text style={styles.description}>
-              Watch documentaries, news, and educational content{' \n'}20+ minutes long, ad-free
+              Cut Ads, Shorts and Nonsense{'\n'}Watch 20+ minute quality content only
             </Text>
           </View>
 
@@ -95,8 +95,9 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   logo: {
-    width: 280,
-    height: 140,
+    width: 200,
+    height: 200,
+    borderRadius: 24,
     marginBottom: 16,
   },
   title: {
