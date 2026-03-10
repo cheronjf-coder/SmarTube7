@@ -202,8 +202,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loginWithGoogleMobile = async () => {
     try {
-      // Use the app scheme for redirect
-      const redirectUri = 'smartube://auth';
+      // Use Expo auth proxy for Expo Go
+      const redirectUri = 'https://auth.expo.io/@anonymous/smartube';
       
       const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
         `client_id=${GOOGLE_WEB_CLIENT_ID}&` +
