@@ -37,7 +37,7 @@ interface AuthContextType {
   login: () => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
-  firebaseToken: string | null;
+  sessionToken: string | null;
   isConfigured: boolean;
 }
 
@@ -49,7 +49,7 @@ const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'http://localhost:800
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [firebaseToken, setFirebaseToken] = useState<string | null>(null);
+  const [sessionToken, setSessionToken] = useState<string | null>(null);
 
   useEffect(() => {
     // If Firebase is not configured, just set loading to false
@@ -62,14 +62,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { onAuthStateChanged } = require('firebase/auth');
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: any) => {
       if (firebaseUser) {
-        // Get Firebase ID token
-        const token = await firebaseUser.getIdToken();
-        setFirebaseToken(token);
-        
-        // Store token
-        await AsyncStorage.setItem('firebase_token', token);
-        
-        // Set user
+        // Set user immediately for UI
         const userData: User = {
           uid: firebaseUser.uid,
           email: firebaseUser.email || '',
@@ -78,12 +71,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
         setUser(userData);
         
-        // Sync with backend
-        await syncWithBackend(token, userData);
+        // Sync with backend and get session token
+        const token = await syncWithBackend(userData);
+        if (token) {
+          setSessionToken(token);
+          await AsyncStorage.setItem('session_token', token);
+        }
       } else {
         setUser(null);
-        setFirebaseToken(null);
-        await AsyncStorage.removeItem('firebase_token');
+        setSessionToken(null);
+        await AsyncStorage.removeItem('session_token');
       }
       setLoading(false);
     });
@@ -91,25 +88,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => unsubscribe();
   }, []);
 
-  const syncWithBackend = async (token: string, userData: User) => {
+  const syncWithBackend = async (userData: User): Promise<string | null> => {
     try {
-      // Send Firebase token to backend to create/update user
-      await axios.post(
+      // Send Firebase user data to backend to create/update user
+      const response = await axios.post(
         `${BACKEND_URL}/api/auth/firebase`,
         {
           uid: userData.uid,
           email: userData.email,
           name: userData.displayName,
           picture: userData.photoURL,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
         }
       );
+      
+      // Return the session token from backend
+      return response.data.session_token;
     } catch (error) {
       console.error('Error syncing with backend:', error);
+      return null;
     }
   };
 
@@ -147,19 +143,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const { signOut } = require('firebase/auth');
         await signOut(auth);
       }
-      await AsyncStorage.removeItem('firebase_token');
+      await AsyncStorage.removeItem('session_token');
       setUser(null);
-      setFirebaseToken(null);
+      setSessionToken(null);
     } catch (error) {
       console.error('Logout error:', error);
     }
   };
 
   const refreshUser = async () => {
-    if (auth && auth.currentUser) {
-      const token = await auth.currentUser.getIdToken(true);
-      setFirebaseToken(token);
-      await AsyncStorage.setItem('firebase_token', token);
+    if (user) {
+      const token = await syncWithBackend(user);
+      if (token) {
+        setSessionToken(token);
+        await AsyncStorage.setItem('session_token', token);
+      }
     }
   };
 
@@ -170,7 +168,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       login, 
       logout, 
       refreshUser, 
-      firebaseToken,
+      sessionToken,
       isConfigured: isFirebaseConfigured 
     }}>
       {children}
@@ -186,10 +184,10 @@ export const useAuth = () => {
   return context;
 };
 
-// Axios interceptor to add Firebase token to all requests
+// Axios interceptor to add session token to all requests
 axios.interceptors.request.use(
   async (config) => {
-    const token = await AsyncStorage.getItem('firebase_token');
+    const token = await AsyncStorage.getItem('session_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }

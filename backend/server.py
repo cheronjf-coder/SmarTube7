@@ -81,48 +81,56 @@ async def get_current_user(
     authorization: Optional[str] = Header(None),
     request: Request = None
 ) -> Optional[User]:
-    """Get current user from session token (cookie or header)"""
-    session_token = None
+    """Get current user from session token or Firebase token"""
+    token = None
     
     # Try cookie first
     if request:
-        session_token = request.cookies.get("session_token")
+        token = request.cookies.get("session_token")
     
     # Fallback to Authorization header
-    if not session_token and authorization:
+    if not token and authorization:
         if authorization.startswith("Bearer "):
-            session_token = authorization.replace("Bearer ", "")
+            token = authorization.replace("Bearer ", "")
     
-    if not session_token:
+    if not token:
         return None
     
-    # Find session
+    # First, try to find a session with this token
     session = await db.user_sessions.find_one(
-        {"session_token": session_token},
+        {"session_token": token},
         {"_id": 0}
     )
     
-    if not session:
-        return None
+    if session:
+        # Check expiry
+        expires_at = session["expires_at"]
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        
+        if expires_at <= datetime.now(timezone.utc):
+            return None
+        
+        # Get user
+        user_doc = await db.users.find_one(
+            {"user_id": session["user_id"]},
+            {"_id": 0}
+        )
+        
+        if user_doc:
+            return User(**user_doc)
     
-    # Check expiry
-    expires_at = session["expires_at"]
-    if expires_at.tzinfo is None:
-        expires_at = expires_at.replace(tzinfo=timezone.utc)
-    
-    if expires_at <= datetime.now(timezone.utc):
-        return None
-    
-    # Get user
+    # If no session found, try to find user by Firebase UID (token is Firebase UID)
+    # This handles Firebase authenticated users
     user_doc = await db.users.find_one(
-        {"user_id": session["user_id"]},
+        {"firebase_uid": token},
         {"_id": 0}
     )
     
-    if not user_doc:
-        return None
+    if user_doc:
+        return User(**user_doc)
     
-    return User(**user_doc)
+    return None
 
 async def require_auth(user: Optional[User] = Depends(get_current_user)) -> User:
     """Require authentication"""
@@ -131,6 +139,95 @@ async def require_auth(user: Optional[User] = Depends(get_current_user)) -> User
     return user
 
 # ============ AUTH ROUTES ============
+
+class FirebaseAuthRequest(BaseModel):
+    uid: str
+    email: str
+    name: str
+    picture: Optional[str] = None
+
+@app.post("/api/auth/firebase")
+async def firebase_auth(
+    request: FirebaseAuthRequest,
+    response: Response
+):
+    """Authenticate user with Firebase credentials"""
+    # Check if user exists by Firebase UID
+    existing_user = await db.users.find_one(
+        {"firebase_uid": request.uid},
+        {"_id": 0}
+    )
+    
+    if not existing_user:
+        # Check if user exists by email (might have logged in differently before)
+        existing_user = await db.users.find_one(
+            {"email": request.email},
+            {"_id": 0}
+        )
+        
+        if existing_user:
+            # Update existing user with Firebase UID
+            await db.users.update_one(
+                {"email": request.email},
+                {"$set": {"firebase_uid": request.uid, "picture": request.picture}}
+            )
+            user_id = existing_user["user_id"]
+        else:
+            # Create new user
+            user_id = f"user_{uuid.uuid4().hex[:12]}"
+            new_user = {
+                "user_id": user_id,
+                "firebase_uid": request.uid,
+                "email": request.email,
+                "name": request.name,
+                "picture": request.picture,
+                "created_at": datetime.now(timezone.utc)
+            }
+            await db.users.insert_one(new_user)
+    else:
+        user_id = existing_user["user_id"]
+        # Update user info if changed
+        await db.users.update_one(
+            {"firebase_uid": request.uid},
+            {"$set": {"name": request.name, "picture": request.picture}}
+        )
+    
+    # Create a session token for this user
+    session_token = f"firebase_{request.uid}"
+    
+    # Upsert session
+    await db.user_sessions.update_one(
+        {"user_id": user_id, "session_token": session_token},
+        {
+            "$set": {
+                "user_id": user_id,
+                "session_token": session_token,
+                "expires_at": datetime.now(timezone.utc) + timedelta(days=30),
+                "updated_at": datetime.now(timezone.utc)
+            },
+            "$setOnInsert": {
+                "created_at": datetime.now(timezone.utc)
+            }
+        },
+        upsert=True
+    )
+    
+    # Set cookie
+    response.set_cookie(
+        key="session_token",
+        value=session_token,
+        httponly=True,
+        secure=True,
+        samesite="none",
+        max_age=30 * 24 * 60 * 60,
+        path="/"
+    )
+    
+    return {
+        "success": True, 
+        "session_token": session_token,
+        "user_id": user_id
+    }
 
 @app.post("/api/auth/session")
 async def exchange_session(
