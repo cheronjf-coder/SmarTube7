@@ -715,8 +715,13 @@ async def get_bookmarks(user: User = Depends(require_auth)):
     """Get user's bookmarks"""
     bookmarks = await db.bookmarks.find(
         {"user_id": user.user_id},
-        {"_id": 0}
+        {"_id": 0}  # Exclude MongoDB _id field
     ).sort("added_at", -1).to_list(1000)
+    
+    # Convert datetime objects to ISO strings
+    for bookmark in bookmarks:
+        if 'added_at' in bookmark and hasattr(bookmark['added_at'], 'isoformat'):
+            bookmark['added_at'] = bookmark['added_at'].isoformat()
     
     return {"bookmarks": bookmarks}
 
@@ -753,6 +758,10 @@ async def add_bookmark(
     }
     
     await db.bookmarks.insert_one(bookmark)
+    
+    # Return without the _id field
+    bookmark.pop('_id', None)
+    bookmark['added_at'] = bookmark['added_at'].isoformat()
     
     return {"success": True, "bookmark": bookmark}
 
