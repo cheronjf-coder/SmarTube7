@@ -50,7 +50,8 @@ async def google_oauth_callback(request: Request):
     <!DOCTYPE html>
     <html>
     <head>
-        <title>SmarTube - Completing Login...</title>
+        <title>SmarTube - Login</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
             body { 
                 font-family: Arial, sans-serif; 
@@ -61,8 +62,9 @@ async def google_oauth_callback(request: Request):
                 margin: 0;
                 background: #1a1a1a;
                 color: white;
+                text-align: center;
             }
-            .container { text-align: center; }
+            .container { padding: 20px; }
             .spinner { 
                 border: 4px solid #333; 
                 border-top: 4px solid #ff0000; 
@@ -73,34 +75,77 @@ async def google_oauth_callback(request: Request):
                 margin: 20px auto;
             }
             @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+            .open-app-btn {
+                display: inline-block;
+                background: #ff0000;
+                color: white;
+                padding: 15px 30px;
+                border-radius: 8px;
+                text-decoration: none;
+                font-size: 18px;
+                margin-top: 20px;
+            }
+            .open-app-btn:hover {
+                background: #cc0000;
+            }
+            #manual-section {
+                display: none;
+                margin-top: 20px;
+            }
         </style>
     </head>
     <body>
         <div class="container">
             <h2>🥷 SmarTube</h2>
-            <div class="spinner"></div>
-            <p>Completing login...</p>
-            <p id="status"></p>
+            <div id="loading-section">
+                <div class="spinner"></div>
+                <p>Connexion réussie!</p>
+                <p>Redirection vers l'app...</p>
+            </div>
+            <div id="manual-section">
+                <p>Appuie sur le bouton pour ouvrir l'app:</p>
+                <a id="open-app-link" class="open-app-btn" href="#">Ouvrir SmarTube</a>
+            </div>
+            <p id="status" style="color: #999; font-size: 12px; margin-top: 20px;"></p>
         </div>
         <script>
-            // Get the access token from URL fragment
-            const hash = window.location.hash.substring(1);
-            const params = new URLSearchParams(hash);
-            const accessToken = params.get('access_token');
-            
-            if (accessToken) {
-                // Redirect to the app with the token
-                document.getElementById('status').textContent = 'Redirecting to app...';
-                window.location.href = 'smartube://auth#access_token=' + accessToken;
+            (function() {
+                // Get the access token from URL fragment
+                var hash = window.location.hash.substring(1);
+                var params = new URLSearchParams(hash);
+                var accessToken = params.get('access_token');
                 
-                // Fallback message if redirect doesn't work
-                setTimeout(() => {
-                    document.getElementById('status').innerHTML = 
-                        'If the app did not open, <a href="smartube://auth#access_token=' + accessToken + '" style="color: #ff6666;">tap here</a>';
-                }, 2000);
-            } else {
-                document.getElementById('status').textContent = 'Login failed. Please try again.';
-            }
+                console.log('Hash:', hash);
+                console.log('Access Token:', accessToken ? 'Found' : 'Not found');
+                
+                if (accessToken) {
+                    var appUrl = 'smartube://auth#access_token=' + accessToken;
+                    
+                    // Set the manual link
+                    document.getElementById('open-app-link').href = appUrl;
+                    
+                    // Try multiple redirect methods
+                    
+                    // Method 1: Direct location change
+                    window.location.href = appUrl;
+                    
+                    // Method 2: After a short delay, try location.replace
+                    setTimeout(function() {
+                        window.location.replace(appUrl);
+                    }, 500);
+                    
+                    // Method 3: Show manual button after 2 seconds
+                    setTimeout(function() {
+                        document.getElementById('loading-section').style.display = 'none';
+                        document.getElementById('manual-section').style.display = 'block';
+                        document.getElementById('status').textContent = 'Si l\\'app ne s\\'ouvre pas automatiquement, appuie sur le bouton.';
+                    }, 2000);
+                    
+                } else {
+                    document.getElementById('loading-section').innerHTML = '<p style="color: #ff6666;">Erreur de connexion. Réessaie.</p>';
+                    document.getElementById('status').textContent = 'Token non trouvé dans l\\'URL';
+                }
+            })();
         </script>
     </body>
     </html>
