@@ -542,25 +542,36 @@ async def search_videos(
     try:
         youtube = build('youtube', 'v3', developerKey=YOUTUBE_API_KEY)
         
-        # Map categories to YouTube category IDs
-        category_mapping = {
-            "documentary": ["15"],  # Science & Technology
-            "news": ["25"],  # News & Politics
-            "actuality": ["25"],  # News & Politics
-            "training": ["27", "28"]  # Education, Science & Technology
+        # Build search query based on category
+        category_keywords = {
+            "documentary": "documentary film",
+            "news": "news report analysis",
+            "actuality": "current events news",
+            "training": "tutorial course training educational"
         }
         
-        category_ids = category_mapping.get(request.category, ["0"])
+        # Excluded terms to filter out garbage content
+        excluded_terms = ["roblox", "minecraft", "gaming", "gameplay", "fortnite", "tiktok", "shorts", "reaction", "prank", "challenge"]
+        
+        # Build the search query
+        base_query = request.query
+        category_boost = category_keywords.get(request.category, "")
+        search_query = f"{base_query} {category_boost}".strip()
+        
+        # Add negative keywords to filter out unwanted content
+        for term in excluded_terms:
+            search_query += f" -{term}"
         
         # Search for videos
         search_response = youtube.search().list(
-            q=request.query,
+            q=search_query,
             part='id,snippet',
             maxResults=50,
             type='video',
             videoDuration='long',  # Only videos longer than 20 minutes
             relevanceLanguage='en',
-            order='relevance'
+            order='relevance',
+            safeSearch='moderate'
         ).execute()
         
         video_ids = [item['id']['videoId'] for item in search_response.get('items', [])]
@@ -588,17 +599,29 @@ async def search_videos(
                 
                 # Filter: only videos 20+ minutes
                 if total_minutes >= 20:
-                    results.append({
-                        "video_id": item['id'],
-                        "title": item['snippet']['title'],
-                        "description": item['snippet']['description'],
-                        "thumbnail": item['snippet']['thumbnails']['high']['url'],
-                        "channel_name": item['snippet']['channelTitle'],
-                        "duration": duration,
-                        "duration_minutes": total_minutes,
-                        "published_at": item['snippet']['publishedAt'],
-                        "view_count": item['statistics'].get('viewCount', '0')
-                    })
+                    # Additional content filtering
+                    title_lower = item['snippet']['title'].lower()
+                    channel_lower = item['snippet']['channelTitle'].lower()
+                    
+                    # Skip if title contains excluded terms
+                    skip = False
+                    for term in excluded_terms:
+                        if term in title_lower or term in channel_lower:
+                            skip = True
+                            break
+                    
+                    if not skip:
+                        results.append({
+                            "video_id": item['id'],
+                            "title": item['snippet']['title'],
+                            "description": item['snippet']['description'],
+                            "thumbnail": item['snippet']['thumbnails']['high']['url'],
+                            "channel_name": item['snippet']['channelTitle'],
+                            "duration": duration,
+                            "duration_minutes": total_minutes,
+                            "published_at": item['snippet']['publishedAt'],
+                            "view_count": item['statistics'].get('viewCount', '0')
+                        })
         
         # Limit results
         return {"videos": results[:request.max_results]}
