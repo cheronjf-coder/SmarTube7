@@ -53,21 +53,11 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Get backend URL from environment
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://smartube2.onrender.com';
+// Get backend URL - ALWAYS use Render for APK builds
+const BACKEND_URL = 'https://smartube2.onrender.com';
 
-// Check if running in Expo Go
-const isExpoGo = Constants.appOwnership === 'expo';
-
-// OAuth redirect URL (through backend for APK, through Expo proxy for Expo Go)
-const getOAuthRedirectUri = () => {
-  if (isExpoGo) {
-    return 'https://auth.expo.io/@jfcheron76/smartube';
-  } else {
-    // For standalone APK, use backend as intermediary
-    return `${BACKEND_URL}/api/auth/google/callback`;
-  }
-};
+// For mobile apps, always use backend OAuth callback
+const OAUTH_REDIRECT_URI = `${BACKEND_URL}/api/auth/google/callback`;
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -216,8 +206,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loginWithGoogleMobile = async () => {
     try {
-      // Get the appropriate redirect URI
-      const redirectUri = getOAuthRedirectUri();
+      // Always use backend OAuth callback for mobile
+      const redirectUri = OAUTH_REDIRECT_URI;
       
       const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
         `client_id=${GOOGLE_WEB_CLIENT_ID}&` +
@@ -227,13 +217,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       console.log('Opening auth URL:', authUrl);
       console.log('Redirect URI:', redirectUri);
-      console.log('Is Expo Go:', isExpoGo);
 
-      // For standalone APK, we use a different flow
-      // The backend callback page will redirect to smartube://auth with the token
+      // Open browser and wait for smartube:// redirect from callback page
       const result = await WebBrowser.openAuthSessionAsync(
         authUrl, 
-        isExpoGo ? redirectUri : 'smartube://auth'
+        'smartube://auth'
       );
       
       console.log('Auth result:', result);
