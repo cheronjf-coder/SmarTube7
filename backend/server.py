@@ -551,7 +551,23 @@ async def search_videos(
         }
         
         # Excluded terms to filter out garbage content
-        excluded_terms = ["roblox", "minecraft", "gaming", "gameplay", "fortnite", "tiktok", "shorts", "reaction", "prank", "challenge"]
+        excluded_terms = [
+            # Gaming
+            "roblox", "minecraft", "gaming", "gameplay", "fortnite", "gta", "playthrough", "walkthrough", "let's play",
+            # Social media junk
+            "tiktok", "shorts", "reaction", "prank", "challenge", "viral", "meme",
+            # Entertainment junk
+            "compilation", "sitcom", "comedy show", "stand up", "standup", "humour", "humor", "funny moments",
+            "best of", "top 10", "top 20", "fails", "bloopers", "behind the scenes",
+            # Movies/Series (unless documentary)
+            "full movie", "movie explained", "series", "episode", "season", "trailer", "teaser",
+            # Music
+            "music video", "concert", "live performance", "album", "playlist",
+            # Kids content
+            "kids", "children", "cartoon", "animation", "animated",
+            # Other
+            "asmr", "mukbang", "unboxing", "haul", "vlog", "daily vlog"
+        ]
         
         # Build the search query
         base_query = request.query
