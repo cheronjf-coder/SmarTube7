@@ -3,7 +3,6 @@ import { Platform, Alert, Linking } from 'react-native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as WebBrowser from 'expo-web-browser';
-import Constants from 'expo-constants';
 import { firebaseConfig } from '../config/firebase';
 
 // Complete auth session for web
