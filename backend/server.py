@@ -542,41 +542,18 @@ async def search_videos(
     try:
         youtube = build('youtube', 'v3', developerKey=YOUTUBE_API_KEY)
         
-        # Build search query based on category
-        category_keywords = {
-            "documentary": "documentary film",
-            "news": "news report analysis",
-            "actuality": "current events news",
-            "training": "tutorial course training educational"
+        # Category-specific search modifications
+        category_suffix = {
+            "documentary": "documentary",
+            "news": "news report",
+            "actuality": "analysis",
+            "training": "tutorial course"
         }
         
-        # Excluded terms to filter out garbage content
-        excluded_terms = [
-            # Gaming
-            "roblox", "minecraft", "gaming", "gameplay", "fortnite", "gta", "playthrough", "walkthrough", "let's play",
-            # Social media junk
-            "tiktok", "shorts", "reaction", "prank", "challenge", "viral", "meme",
-            # Entertainment junk
-            "compilation", "sitcom", "comedy show", "stand up", "standup", "humour", "humor", "funny moments",
-            "best of", "top 10", "top 20", "fails", "bloopers", "behind the scenes",
-            # Movies/Series (unless documentary)
-            "full movie", "movie explained", "series", "episode", "season", "trailer", "teaser",
-            # Music
-            "music video", "concert", "live performance", "album", "playlist",
-            # Kids content
-            "kids", "children", "cartoon", "animation", "animated",
-            # Other
-            "asmr", "mukbang", "unboxing", "haul", "vlog", "daily vlog"
-        ]
-        
-        # Build the search query
-        base_query = request.query
-        category_boost = category_keywords.get(request.category, "")
-        search_query = f"{base_query} {category_boost}".strip()
-        
-        # Add negative keywords to filter out unwanted content
-        for term in excluded_terms:
-            search_query += f" -{term}"
+        # Build search query - keep it simple and focused
+        search_query = request.query
+        if request.category in category_suffix:
+            search_query = f"{request.query} {category_suffix[request.category]}"
         
         # Search for videos
         search_response = youtube.search().list(
@@ -601,11 +578,27 @@ async def search_videos(
             id=','.join(video_ids)
         ).execute()
         
+        # Terms to filter out from results (check title and channel)
+        excluded_terms = [
+            # Gaming
+            "roblox", "minecraft", "fortnite", "gta", "gameplay", "playthrough", "let's play", "gaming",
+            # Social media junk
+            "tiktok", "shorts", "reaction video", "prank", "challenge",
+            # Entertainment junk  
+            "compilation", "best moments", "funny moments", "fails", "bloopers",
+            "sitcom", "stand up comedy", "standup",
+            # Music
+            "music video", "official video", "lyric video", "concert live",
+            # Kids
+            "kids", "children", "cartoon", "peppa", "cocomelon",
+            # Other junk
+            "asmr", "mukbang", "unboxing", "haul", "vlog"
+        ]
+        
         results = []
         for item in videos_response.get('items', []):
             # Parse duration
             duration = item['contentDetails']['duration']
-            # Convert ISO 8601 duration to minutes
             import re
             match = re.search(r'PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?', duration)
             if match:
@@ -615,11 +608,10 @@ async def search_videos(
                 
                 # Filter: only videos 20+ minutes
                 if total_minutes >= 20:
-                    # Additional content filtering
                     title_lower = item['snippet']['title'].lower()
                     channel_lower = item['snippet']['channelTitle'].lower()
                     
-                    # Skip if title contains excluded terms
+                    # Skip if title or channel contains excluded terms
                     skip = False
                     for term in excluded_terms:
                         if term in title_lower or term in channel_lower:
