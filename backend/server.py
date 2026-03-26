@@ -392,6 +392,10 @@ async def logout(
 
 # ============ YOUTUBE VIDEO ROUTES ============
 
+import re
+
+# ... (rest of imports)
+
 @app.post("/api/videos/search")
 async def search_videos(
     request: VideoSearchRequest,
@@ -412,10 +416,12 @@ async def search_videos(
             "training": "tutorial course"
         }
         
-        # Build search query - keep it simple and focused
+        # Build search query
         search_query = request.query
         if request.category in category_suffix:
             search_query = f"{request.query} {category_suffix[request.category]}"
+        
+        print(f"Searching YouTube for: {search_query}")
         
         # Search for videos
         search_response = youtube.search().list(
@@ -423,80 +429,75 @@ async def search_videos(
             part='id,snippet',
             maxResults=50,
             type='video',
-            videoDuration='long',  # Only videos longer than 20 minutes
+            videoDuration='long',
             relevanceLanguage='en',
             order='relevance',
             safeSearch='moderate'
         ).execute()
         
-        video_ids = [item['id']['videoId'] for item in search_response.get('items', [])]
+        items = search_response.get('items', [])
+        video_ids = [item['id']['videoId'] for item in items if 'id' in item and 'videoId' in item['id']]
         
         if not video_ids:
             return {"videos": []}
         
-        # Get video details
+        # Get video details - chunking if necessary (though 50 is fine usually)
         videos_response = youtube.videos().list(
             part='snippet,contentDetails,statistics',
             id=','.join(video_ids)
         ).execute()
         
-        # Terms to filter out from results (check title and channel)
-        excluded_terms = [
-            # Gaming
-            "roblox", "minecraft", "fortnite", "gta", "gameplay", "playthrough", "let's play", "gaming",
-            # Social media junk
-            "tiktok", "shorts", "reaction video", "prank", "challenge",
-            # Entertainment junk  
-            "compilation", "best moments", "funny moments", "fails", "bloopers",
-            "sitcom", "stand up comedy", "standup",
-            # Music
-            "music video", "official video", "lyric video", "concert live",
-            # Kids
-            "kids", "children", "cartoon", "peppa", "cocomelon",
-            # Other junk
-            "asmr", "mukbang", "unboxing", "haul", "vlog"
-        ]
+        # Terms to filter out
+        excluded_terms = ["roblox", "minecraft", "fortnite", "gta", "tiktok", "shorts", "prank", "challenge", "funny moments", "fails", "bloopers", "music video", "cartoon", "cocomelon", "asmr", "mukbang"]
         
         results = []
         for item in videos_response.get('items', []):
-            # Parse duration
-            duration = item['contentDetails']['duration']
-            import re
-            match = re.search(r'PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?', duration)
-            if match:
-                hours = int(match.group(1) or 0)
-                minutes = int(match.group(2) or 0)
-                total_minutes = hours * 60 + minutes
+            try:
+                # Parse duration (ISO 8601)
+                duration = item['contentDetails']['duration']
+                match = re.search(r'PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?', duration)
                 
-                # Filter: only videos 20+ minutes
+                total_minutes = 0
+                if match:
+                    hours = int(match.group(1) or 0)
+                    minutes = int(match.group(2) or 0)
+                    total_minutes = hours * 60 + minutes
+                else:
+                    # Alternative parsing if regex fails
+                    print(f"Regex failed for duration: {duration}")
+                    continue
+                
+                # Filter: 20+ minutes
                 if total_minutes >= 20:
-                    title_lower = item['snippet']['title'].lower()
-                    channel_lower = item['snippet']['channelTitle'].lower()
+                    title = item['snippet']['title']
+                    channel = item['snippet']['channelTitle']
+                    title_lower = title.lower()
+                    channel_lower = channel.lower()
                     
-                    # Skip if title or channel contains excluded terms
-                    skip = False
-                    for term in excluded_terms:
-                        if term in title_lower or term in channel_lower:
-                            skip = True
-                            break
+                    if any(term in title_lower or term in channel_lower for term in excluded_terms):
+                        continue
                     
-                    if not skip:
-                        results.append({
-                            "video_id": item['id'],
-                            "title": item['snippet']['title'],
-                            "description": item['snippet']['description'],
-                            "thumbnail": item['snippet']['thumbnails']['high']['url'],
-                            "channel_name": item['snippet']['channelTitle'],
-                            "duration": duration,
-                            "duration_minutes": total_minutes,
-                            "published_at": item['snippet']['publishedAt'],
-                            "view_count": item['statistics'].get('viewCount', '0')
-                        })
+                    results.append({
+                        "video_id": item['id'],
+                        "title": title,
+                        "description": item['snippet']['description'],
+                        "thumbnail": item['snippet']['thumbnails'].get('high', {}).get('url', ''),
+                        "channel_name": channel,
+                        "duration": duration,
+                        "duration_minutes": total_minutes,
+                        "published_at": item['snippet']['publishedAt'],
+                        "view_count": item['statistics'].get('viewCount', '0')
+                    })
+            except Exception as e:
+                print(f"Error parsing video item: {str(e)}")
+                continue
         
-        # Limit results
+        print(f"Found {len(results)} matching videos")
         return {"videos": results[:request.max_results]}
         
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
 
 @app.get("/api/videos/{video_id}/info")
