@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
+import * as React from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { 
   View, 
   StyleSheet, 
@@ -27,6 +28,7 @@ export default function VideoPlayerNative({
 }: VideoPlayerProps) {
   const videoRef = useRef<Video>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
     // Enable background audio
@@ -44,9 +46,8 @@ export default function VideoPlayerNative({
     };
 
     setupAudio();
-
-    return () => {};
-  }, []);
+    setHasError(false); // Reset error on new stream
+  }, [streamUrl]);
 
   const handleFullscreenUpdate = async (event: any) => {
     switch (event.fullscreenUpdate) {
@@ -60,6 +61,16 @@ export default function VideoPlayerNative({
         break;
     }
   };
+
+  if (hasError) {
+    return (
+      <View style={styles.errorContainer}>
+        <Ionicons name="alert-circle-outline" size={32} color="#FF0000" />
+        <Text style={styles.errorText}>Native playback failed.</Text>
+        <Text style={styles.errorSubtext}>Please use the YouTube player below.</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.wrapper}>
@@ -76,7 +87,7 @@ export default function VideoPlayerNative({
           posterSource={undefined}
           onError={(error) => {
             console.error('Video error:', error);
-            Alert.alert('Video Error', 'Impossible de lire cette vidéo: ' + error);
+            setHasError(true);
           }}
         />
       </View>
@@ -97,4 +108,24 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+  errorContainer: {
+    width: '100%',
+    aspectRatio: 16 / 9,
+    backgroundColor: '#1A1A1A',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+    borderRadius: 8,
+  },
+  errorText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginTop: 8,
+  },
+  errorSubtext: {
+    color: '#999',
+    fontSize: 12,
+    marginTop: 4,
+  }
 });
