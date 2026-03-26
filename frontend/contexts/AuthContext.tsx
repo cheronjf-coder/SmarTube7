@@ -180,17 +180,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setLoading(true);
       await GoogleSignin.hasPlayServices();
+      
+      // Force sign out first to ensure the account picker always appears
+      try {
+        await GoogleSignin.signOut();
+      } catch (e) {
+        // Ignore sign out errors if not signed in
+      }
+      
       const response = await GoogleSignin.signIn();
       console.log('Native Google Sign-In response type:', response.type);
       
       if (response.type !== 'success') {
-        throw new Error('La connexion a été annulée ou a échoué.');
+        setLoading(false);
+        return;
       }
       
       const googleUser = response.data.user;
       if (!googleUser) {
         throw new Error('Les informations utilisateur Google sont manquantes.');
       }
+      
+      console.log('Login successful for:', googleUser.email);
       
       const userData: User = {
         uid: googleUser.id,
@@ -199,22 +210,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         photoURL: googleUser.photo || undefined,
       };
       
-      setUser(userData);
-      
       // Sync with backend
       try {
+        console.log('Syncing with backend at:', BACKEND_URL);
         const token = await syncWithBackend(userData);
+        console.log('Backend sync successful, token received');
+        
         if (token) {
-          setSessionToken(token);
           await AsyncStorage.setItem('session_token', token);
+          setSessionToken(token);
+          setUser(userData);
+        } else {
+          throw new Error('Le serveur n\'a pas renvoyé de jeton de session.');
         }
       } catch (syncError: any) {
         console.error('Backend sync error:', syncError);
+        setUser(null);
         throw new Error(`Erreur de synchronisation serveur: ${syncError.message}`);
       }
       
     } catch (error: any) {
       console.error('Native Google login error:', error);
+      setUser(null);
       Alert.alert('Erreur de Connexion', error.message || 'Échec de la connexion avec Google.');
     } finally {
       setLoading(false);
