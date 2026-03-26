@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "567378036880",
+    "project_id": "smartube-96955",
+    "storage_bucket": "smartube-96955.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:567378036880:android:31e405d4bf8bb51b1d7015",
+        "android_client_info": {
+          "package_name": "com.smartube.app.v1"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "567378036880-1r02fhoqme3s228kopn14nv8a16c20a6.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.smartube.app.v1",
+            "certificate_hash": "30115658282a627db965c41114b968abe94e488b"
+          }
+        },
+        {
+          "client_id": "567378036880-vajof3f87ce2u9f540na8mi4i7uuc3h6.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBpl4hcf-gcvKDYURHtNJcVlpfySjKhsAU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "567378036880-vajof3f87ce2u9f540na8mi4i7uuc3h6.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
