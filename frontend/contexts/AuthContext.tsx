@@ -189,19 +189,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       const response = await GoogleSignin.signIn();
-      console.log('Native Google Sign-In response type:', response.type);
+      console.log('Native Google Sign-In response entire:', JSON.stringify(response));
       
       if (response.type !== 'success') {
         setLoading(false);
         return;
       }
       
-      const googleUser = response.data.user;
-      if (!googleUser) {
-        throw new Error('Les informations utilisateur Google sont manquantes.');
+      if (!response.data) {
+        throw new Error('Aucune donnée reçue de Google.');
+      }
+
+      // v13+ uses response.data.user, older versions/different setups might have it differently
+      const googleUser = (response.data as any).user || response.data;
+      
+      if (!googleUser || !googleUser.id) {
+        console.error('Incomplete Google user data:', JSON.stringify(googleUser));
+        throw new Error('Structure des informations Google non reconnue.');
       }
       
-      console.log('Login successful for:', googleUser.email);
+      console.log('Login successful for ID:', googleUser.id);
       
       const userData: User = {
         uid: googleUser.id,
