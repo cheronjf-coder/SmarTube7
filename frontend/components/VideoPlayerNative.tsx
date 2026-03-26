@@ -74,6 +74,10 @@ export default function VideoPlayerNative({
           onFullscreenUpdate={handleFullscreenUpdate}
           usePoster={false}
           posterSource={undefined}
+          onError={(error) => {
+            console.error('Video error:', error);
+            Alert.alert('Video Error', 'Impossible de lire cette vidéo: ' + error);
+          }}
         />
       </View>
     </View>
