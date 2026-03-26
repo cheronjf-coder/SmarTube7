@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,9 +10,16 @@ import {
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 
 export default function Login() {
-  const { login } = useAuth();
+  const { login, user, loading } = useAuth();
+
+  useEffect(() => {
+    if (user && !loading) {
+      router.replace('/(tabs)/home');
+    }
+  }, [user, loading]);
 
   return (
     <View style={styles.container}>
