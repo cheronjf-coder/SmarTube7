@@ -180,9 +180,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setLoading(true);
       await GoogleSignin.hasPlayServices();
-      const userInfo = await GoogleSignin.signIn();
+      const response = await GoogleSignin.signIn();
+      console.log('Native Google Sign-In response type:', response.type);
       
-      const { user: googleUser } = userInfo;
+      if (response.type !== 'success') {
+        throw new Error('La connexion a été annulée ou a échoué.');
+      }
+      
+      const googleUser = response.data.user;
+      if (!googleUser) {
+        throw new Error('Les informations utilisateur Google sont manquantes.');
+      }
       
       const userData: User = {
         uid: googleUser.id,
