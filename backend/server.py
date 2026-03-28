@@ -207,8 +207,10 @@ class ShareLink(BaseModel):
 
 class VideoSearchRequest(BaseModel):
     query: str
-    category: str  # actuality, documentary, news, training
+    category: str  # documentary, news, training
     max_results: int = 20
+    order: str = "relevance" # date, relevance, viewCount
+    duration: str = "long" # long, medium, short, any
 
 class SubscriptionPurchase(BaseModel):
     plan_type: str  # monthly, yearly, lifetime
@@ -408,32 +410,50 @@ async def search_videos(
     try:
         youtube = build('youtube', 'v3', developerKey=YOUTUBE_API_KEY)
         
-        # Category-specific search modifications
-        category_suffix = {
-            "documentary": "documentary",
-            "news": "news report",
-            "actuality": "analysis",
-            "training": "tutorial course"
+        # Category-specific search modifications (Documentary, News, Training)
+        category_config = {
+            "documentary": {
+                "suffix": "full documentary HD high quality movie",
+                "exclude": "-speech -talk -discourse -conference -interview -shorts -tiktok -funny"
+            },
+            "news": {
+                "suffix": "news report official analysis speech talk discourse",
+                "exclude": "-cartoon -movie -tutorial -how-to -shorts -tiktok -funny"
+            },
+            "training": {
+                "suffix": "comprehensive tutorial course training full guide",
+                "exclude": "-news -speech -discourse -movie -shorts -tiktok -funny"
+            }
         }
         
-        # Build search query
-        search_query = request.query
-        if request.category in category_suffix:
-            search_query = f"{request.query} {category_suffix[request.category]}"
+        # Build optimized search query
+        base_query = request.query
+        config = category_config.get(request.category, {
+            "suffix": "",
+            "exclude": "-shorts -tiktok -funny -prank -challenge"
+        })
+        
+        search_query = f"{base_query} {config['suffix']} {config['exclude']}"
         
         print(f"Searching YouTube for: {search_query}")
         
+        # Prepare parameters for YouTube search
+        actual_order = "relevance" if request.order == "duration" else request.order
+        search_kwargs = {
+            "q": search_query,
+            "part": 'id,snippet',
+            "maxResults": 50,
+            "type": 'video',
+            "order": actual_order,
+            "safeSearch": 'moderate'
+        }
+        
+        # Only add videoDuration if not 'any'
+        if request.duration != 'any':
+            search_kwargs["videoDuration"] = request.duration
+
         # Search for videos
-        search_response = youtube.search().list(
-            q=search_query,
-            part='id,snippet',
-            maxResults=50,
-            type='video',
-            videoDuration='long',
-            relevanceLanguage='en',
-            order='relevance',
-            safeSearch='moderate'
-        ).execute()
+        search_response = youtube.search().list(**search_kwargs).execute()
         
         items = search_response.get('items', [])
         video_ids = [item['id']['videoId'] for item in items if 'id' in item and 'videoId' in item['id']]
@@ -493,6 +513,11 @@ async def search_videos(
                 continue
         
         print(f"Found {len(results)} matching videos")
+        
+        # Sort by duration longest to shortest if requested
+        if request.order == "duration":
+            results.sort(key=lambda x: x['duration_minutes'], reverse=True)
+            
         return {"videos": results[:request.max_results]}
         
     except Exception as e:
