@@ -410,19 +410,19 @@ async def search_videos(
     try:
         youtube = build('youtube', 'v3', developerKey=YOUTUBE_API_KEY)
         
-        # Category-specific search modifications (Documentary, News, Training)
+        # Category-specific search modifications
         category_config = {
             "documentary": {
-                "suffix": "full documentary HD high quality movie",
-                "exclude": "-speech -talk -discourse -conference -interview -shorts -tiktok -funny"
+                "suffix": "documentaire",
+                "exclude": "-shorts"
             },
             "news": {
-                "suffix": "news report official analysis speech talk discourse",
-                "exclude": "-cartoon -movie -tutorial -how-to -shorts -tiktok -funny"
+                "suffix": "actualité reportage",
+                "exclude": "-shorts"
             },
             "training": {
-                "suffix": "comprehensive tutorial course training full guide",
-                "exclude": "-news -speech -discourse -movie -shorts -tiktok -funny"
+                "suffix": "formation cours complet",
+                "exclude": "-shorts"
             }
         }
         
@@ -430,10 +430,11 @@ async def search_videos(
         base_query = request.query
         config = category_config.get(request.category, {
             "suffix": "",
-            "exclude": "-shorts -tiktok -funny -prank -challenge"
+            "exclude": "-shorts"
         })
         
-        search_query = f"{base_query} {config['suffix']} {config['exclude']}"
+        # S'assurer d'avoir un espacement propre.
+        search_query = f"{base_query} {config['suffix']} {config['exclude']}".strip()
         
         print(f"Searching YouTube for: {search_query}")
         
